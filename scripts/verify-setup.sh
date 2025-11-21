@@ -64,8 +64,11 @@ echo "=== Source Database Connectivity ==="
 echo "Testing connection to 192.168.0.74:3306..."
 
 # Load .env if exists
+# Load .env if exists
 if [ -f ".env" ]; then
-  export $(cat .env | grep -v '^#' | sed 's/#.*$//' | xargs)
+  set -a
+  source <(grep -v '^#' .env)
+  set +a
 fi
 
 if command -v mysql &>/dev/null && [ ! -z "$SOURCE_DB_PASSWORD" ]; then
