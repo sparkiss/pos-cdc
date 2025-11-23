@@ -23,7 +23,7 @@
 
     # Redpanda (Kafka-compatible message broker)
     redpanda:
-      image: docker.redpanda.com/vectorized/redpanda:latest
+      image: docker.redpanda.com/redpandadata/redpanda:v25.2.11
       container_name: redpanda
       restart: unless-stopped
       networks:
@@ -50,7 +50,7 @@
 
     # Redpanda Console (Web UI)
     redpanda-console:
-      image: docker.redpanda.com/vectorized/console:latest
+      image: docker.redpanda.com/redpandadata/console:latest
       container_name: redpanda-console
       restart: unless-stopped
       networks:
