@@ -38,3 +38,10 @@ logs/
 
 # Docker
 docker-compose.override.yml
+
+# Debezium connector configs (contain credentials)
+configs/debezium-mysql-connector.json
+
+# Keep examples
+!configs/*.example.json
+!configs/*.json.example
