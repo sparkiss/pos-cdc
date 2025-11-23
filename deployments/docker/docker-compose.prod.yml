@@ -1,0 +1,59 @@
+  services:
+    mysql-target:
+      container_name: mysql-target-prod
+      restart: always
+      deploy:
+        resources:
+          limits:
+            cpus: '2'
+            memory: 4G
+          reservations:
+            cpus: '1'
+            memory: 2G
+      logging:
+        driver: "json-file"
+        options:
+          max-size: "10m"
+          max-file: "3"
+
+    redpanda:
+      container_name: redpanda-prod
+      restart: always
+      deploy:
+        resources:
+          limits:
+            cpus: '2'
+            memory: 4G
+          reservations:
+            cpus: '1'
+            memory: 2G
+      logging:
+        driver: "json-file"
+        options:
+          max-size: "10m"
+          max-file: "3"
+
+    redpanda-console:
+      container_name: redpanda-console-prod
+      restart: always
+
+    debezium:
+      container_name: debezium-prod
+      restart: always
+      environment:
+        LOG_LEVEL: INFO
+        KAFKA_HEAP_OPTS: "-Xms1G -Xmx2G"
+      deploy:
+        resources:
+          limits:
+            cpus: '2'
+            memory: 4G
+          reservations:
+            cpus: '1'
+            memory: 2G
+      logging:
+        driver: "json-file"
+        options:
+          max-size: "10m"
+          max-file: "3"
+

@@ -1,0 +1,31 @@
+services:
+  # Target MySQL 8 Database
+  mysql-target:
+    image: mysql:8.0
+    container_name: mysql-target-dev
+    restart: unless-stopped
+    networks:
+      - cdc-network
+    ports:
+      - "3307:3306"  # Map to 3307 on host to avoid conflict
+    environment:
+      MYSQL_ROOT_PASSWORD: ${TARGET_DB_PASSWORD}
+      MYSQL_DATABASE: ${TARGET_DB_NAME}
+      MYSQL_USER: ${TARGET_DB_USER}
+      MYSQL_PASSWORD: ${TARGET_DB_PASSWORD}
+    volumes:
+      - mysql-target-data:/var/lib/mysql
+      - ./../../configs:/docker-entrypoint-initdb.d:ro  # Auto-run init scripts
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=50
+      - --default-authentication-plugin=mysql_native_password
+
+volumes:
+  mysql-target-data:
+    driver: local
+
+networks:
+  cdc-network:
+    external: true
