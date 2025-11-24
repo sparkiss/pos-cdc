@@ -4,17 +4,17 @@
     "connector.class": "io.debezium.connector.mysql.MySqlConnector",
     "tasks.max": "1",
 
-    "database.hostname": "192.168.0.74",
-    "database.port": "3306",
-    "database.user": "cdc_user",
-    "database.password": "CDC_USER_PASSWORD",
-    "database.server.id": "184054",
+    "database.hostname": "SOURCE_DB_HOST",
+    "database.port": "SOURCE_DB_PORT",
+    "database.user": "SOURCE_DB_USER",
+    "database.password": "SOURCE_DB_PASSWORD",
+    "database.server.id": "DEBEZIUM_SERVER_ID",
     "database.server.name": "pos_mysql",
 
     "database.ssl.mode": "disabled",
 
-    "database.include.list": "pos_production",
-    "table.exclude.list": "pos_production.recorded_order,pos_production.lock,pos_production.log",
+    "database.include.list": "pos",
+    "table.exclude.list": "pos.recorded_order,pos.lock,pos.log",
 
     "database.history.kafka.bootstrap.servers": "redpanda:29092",
     "database.history.kafka.topic": "schema-changes.pos_mysql",
@@ -37,3 +37,4 @@
     "transforms.unwrap.add.fields": "op,ts_ms,source.db,source.table"
   }
 }
+

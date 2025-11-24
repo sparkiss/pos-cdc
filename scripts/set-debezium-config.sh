@@ -37,14 +37,20 @@ echo "Creating configs/debezium-mysql-connector.json..."
 cp configs/debezium-mysql-connector.json.example \
     configs/debezium-mysql-connector.json
 
-# Replace placeholders
-sed -i "s/SOURCE_MYSQL_HOST/$SOURCE_DB_HOST/g" \
+# Replace environment variable placeholders with actual values
+sed -i "s/SOURCE_DB_HOST/$SOURCE_DB_HOST/g" \
     configs/debezium-mysql-connector.json
 
-sed -i "s/CDC_USER_PASSWORD/$SOURCE_DB_PASSWORD/g" \
+sed -i "s/SOURCE_DB_PORT/$SOURCE_DB_PORT/g" \
     configs/debezium-mysql-connector.json
 
-sed -i "s/UNIQUE_SERVER_ID/$DEBEZIUM_SERVER_ID/g" \
+sed -i "s/SOURCE_DB_USER/$SOURCE_DB_USER/g" \
+    configs/debezium-mysql-connector.json
+
+sed -i "s/SOURCE_DB_PASSWORD/$SOURCE_DB_PASSWORD/g" \
+    configs/debezium-mysql-connector.json
+
+sed -i "s/DEBEZIUM_SERVER_ID/$DEBEZIUM_SERVER_ID/g" \
     configs/debezium-mysql-connector.json
 
 # Set restrictive permissions
