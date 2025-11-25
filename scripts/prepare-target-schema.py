@@ -80,7 +80,7 @@ def process_schema(input_file, output_file, excluded_tables, source_db, target_d
 
 if __name__ == '__main__':
     # Get database names from environment or use defaults
-    source_db = os.getenv('SOURCE_DB_NAME', 'pos_production')
+    source_db = os.getenv('SOURCE_DB_NAME', 'pos')
     target_db = os.getenv('TARGET_DB_NAME', 'pos_replica')
 
     excluded = ['recorded_order', 'lock', 'log']

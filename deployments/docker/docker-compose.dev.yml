@@ -1,12 +1,9 @@
   services:
     mysql-target:
-      container_name: mysql-target-dev
-      # Mount configs for easy schema updates
       volumes:
         - ./../../configs:/docker-entrypoint-initdb.d:ro
 
     redpanda:
-      container_name: redpanda-dev
       # Smaller resource usage for dev
       command:
         - redpanda
@@ -22,14 +19,18 @@
         - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
         - --advertise-kafka-addr
         - PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+        - --pandaproxy-addr
+        - PLAINTEXT://0.0.0.0:8082
+        - --advertise-pandaproxy-addr
+        - PLAINTEXT://redpanda:8082
+        - --rpc-addr
+        - 0.0.0.0:33145
+        - --advertise-rpc-addr
+        - redpanda:33145
         - --set
         - redpanda.developer_mode=true
 
-    redpanda-console:
-      container_name: redpanda-console-dev
-
     debezium:
-      container_name: debezium-dev
       environment:
         LOG_LEVEL: DEBUG
         KAFKA_HEAP_OPTS: "-Xms512M -Xmx1G"
