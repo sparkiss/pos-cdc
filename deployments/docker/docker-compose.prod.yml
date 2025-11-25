@@ -1,6 +1,5 @@
   services:
     mysql-target:
-      container_name: mysql-target-prod
       restart: always
       deploy:
         resources:
@@ -17,7 +16,6 @@
           max-file: "3"
 
     redpanda:
-      container_name: redpanda-prod
       restart: always
       deploy:
         resources:
@@ -34,11 +32,9 @@
           max-file: "3"
 
     redpanda-console:
-      container_name: redpanda-console-prod
       restart: always
 
     debezium:
-      container_name: debezium-prod
       restart: always
       environment:
         LOG_LEVEL: INFO

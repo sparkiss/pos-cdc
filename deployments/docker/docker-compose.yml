@@ -81,6 +81,10 @@
         CONNECT_ENABLED: "true"
         CONNECT_CLUSTERS_0_NAME: debezium-cluster
         CONNECT_CLUSTERS_0_URL: http://debezium:8083
+        # Disable authentication completely
+        LOGIN_ENABLED: "false"
+        LOGIN_USE_OIDC: "false"
+        LOGIN_JWT_ENABLED: "false"
 
       depends_on:
         - redpanda
