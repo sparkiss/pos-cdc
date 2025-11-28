@@ -11,6 +11,8 @@ import (
 	//"github.com/IBM/sarama"
 	"github.com/sparkiss/pos-cdc/internal/consumer"
 	"github.com/sparkiss/pos-cdc/internal/models"
+	"github.com/sparkiss/pos-cdc/internal/processor"
+	"github.com/sparkiss/pos-cdc/internal/writer"
 )
 
 func main() {
@@ -20,14 +22,35 @@ func main() {
 	brokers := []string{"localhost:9092"}
 	groupID := "cdc-consumer-group"
 
+	mysqlWriter, err := writer.New(writer.Config{
+		Host:       "localhost",
+		Port:       3307,
+		User:       "cdc_writer",
+		Password:   "fixme", //FIXME: from env
+		Database:   "pos_replica",
+		MaxRetries: 3,
+		BackoffMS:  1000,
+	})
+	if err != nil {
+		log.Fatalf("Failed to connect to MySQL: %v", err)
+	}
+	defer mysqlWriter.Close()
+
+	proc := processor.New()
+
 	// Create event handler
-	// For now, just print events
-	// TODO: change it to databse instead
 	handler := func(event *models.CDCEvent) error {
-		log.Printf("Received: table=%s op=%s payload=%v",
+		sql, args, err := proc.BuildSQL(event)
+		if err != nil {
+			return fmt.Errorf("failed to build SQL: %w", err)
+		}
+
+		if err := mysqlWriter.Execute(sql, args); err != nil {
+			return fmt.Errorf("failed to execute: %w", err)
+		}
+		log.Printf("Applied: table=%s op=%s",
 			event.SourceTable,
-			event.GetOperation().String(),
-			event.Payload)
+			event.GetOperation().String())
 		return nil
 	}
 
