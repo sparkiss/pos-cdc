@@ -1,39 +1,65 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"github.com/IBM/sarama"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+
+	//"github.com/IBM/sarama"
+	"github.com/sparkiss/pos-cdc/internal/consumer"
+	"github.com/sparkiss/pos-cdc/internal/models"
 )
 
 func main() {
 	fmt.Println("CDC Consumer starting...")
 
-	//FIXME: hardcoded values -- extract it in config
-	//TAG: environment varialbe
+	//FIXME: Hardcoded values -- extract it in config
 	brokers := []string{"localhost:9092"}
+	groupID := "cdc-consumer-group"
 
-	// Create Kafka admin client to list topics
-	config := sarama.NewConfig()
-	config.Version = sarama.V2_8_0_0
+	// Create event handler
+	// For now, just print events
+	// TODO: change it to databse instead
+	handler := func(event *models.CDCEvent) error {
+		log.Printf("Received: table=%s op=%s payload=%v",
+			event.SourceTable,
+			event.GetOperation().String(),
+			event.Payload)
+		return nil
+	}
 
-	//TODO: Add proper error handling
-	//For now, it just crashes if something goes wrong
-	admin, err := sarama.NewClusterAdmin(brokers, config)
+	kafkaConsumer, err := consumer.New(brokers, groupID, handler)
 	if err != nil {
-		log.Fatalf("Failed ro create admin: %v", err)
+		log.Fatalf("Failed to create consumer: %v", err)
 	}
-	defer admin.Close()
+	defer kafkaConsumer.Close()
 
-	topics, err := admin.ListTopics()
-	if err != nil {
-		log.Fatalf("Failed to list topics: %v", err)
-	}
+	// Create context with cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	fmt.Printf("\nfound %d topics:\n", len(topics))
-	for name := range topics {
-		fmt.Printf("  - %s\n", name)
-	}
+	// Handle shutdown signals (Ctrl+C)
+	sigterm := make(chan os.Signal, 1)
+	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
 
-	fmt.Println("\nCDC Consumer finished.")
+	// Start consumer in Background
+	go func() {
+		if err := kafkaConsumer.Start(ctx); err != nil {
+			log.Printf("Consumer stopped: %v", err)
+		}
+	}()
+
+	log.Println("CDCConsuemr running. Press Ctrl+C to stop")
+
+	// Wait for shutdown signal
+	<-sigterm
+	log.Println("Shutdown signal received")
+
+	// Cancel context to stop consumer
+	cancel()
+
+	log.Println("CDC Consumer stopped")
 }
