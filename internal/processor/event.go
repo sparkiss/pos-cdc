@@ -32,7 +32,6 @@ func (p *Processor) BuildSQL(event *models.CDCEvent) (string, []any, error) {
 		return "", nil, fmt.Errorf("unknown operation: %s", event.Operation)
 
 	}
-
 }
 
 func (p *Processor) buildDelete(event *models.CDCEvent) (string, []any, error) {
@@ -78,9 +77,9 @@ func (p *Processor) buildDelete(event *models.CDCEvent) (string, []any, error) {
 
 func (p *Processor) buildUpdate(event *models.CDCEvent) (string, []any, error) {
 	var setClauses []string
-	var values []interface{}
+	var values []any
 	var primaryKey string
-	var primaryValue interface{}
+	var primaryValue any
 
 	for key, value := range event.Payload {
 		// Skip metadata
