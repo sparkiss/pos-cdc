@@ -3,60 +3,70 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"go.uber.org/zap"
+
 	//"github.com/IBM/sarama"
+	"github.com/sparkiss/pos-cdc/internal/config"
 	"github.com/sparkiss/pos-cdc/internal/consumer"
 	"github.com/sparkiss/pos-cdc/internal/models"
 	"github.com/sparkiss/pos-cdc/internal/processor"
+	"github.com/sparkiss/pos-cdc/internal/schema"
 	"github.com/sparkiss/pos-cdc/internal/writer"
+	"github.com/sparkiss/pos-cdc/pkg/logger"
 )
 
 func main() {
-	fmt.Println("CDC Consumer starting...")
 
-	//FIXME: Hardcoded values -- extract it in config
-	brokers := []string{"localhost:9092"}
-	groupID := "cdc-consumer-group"
-
-	mysqlWriter, err := writer.New(writer.Config{
-		Host:       "localhost",
-		Port:       3307,
-		User:       "cdc_writer",
-		Password:   "fixme", //FIXME: from env
-		Database:   "pos_replica",
-		MaxRetries: 3,
-		BackoffMS:  1000,
-	})
+	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to connect to MySQL: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := logger.Init(cfg.LogLevel, cfg.LogFormat); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to init logger: %v\n", err)
+		os.Exit(1)
+	}
+	defer logger.Sync()
+
+	logger.Log.Info("CDC Consumer starting", zap.String("log_level", cfg.LogLevel))
+
+	mysqlWriter, err := writer.New(cfg)
+	if err != nil {
+		logger.Log.Fatal("Failed to connect to MySQL: %v", zap.Error(err))
 	}
 	defer mysqlWriter.Close()
 
-	proc := processor.New()
+	schemaCache := schema.New(mysqlWriter.DB(), cfg.TargetDB.Database)
+
+	proc := processor.New(schemaCache)
 
 	// Create event handler
 	handler := func(event *models.CDCEvent) error {
 		sql, args, err := proc.BuildSQL(event)
 		if err != nil {
-			return fmt.Errorf("failed to build SQL: %w", err)
+			logger.Log.Debug("Skipping table",
+				zap.String("table", event.SourceTable),
+				zap.Error(err))
+			return nil // Skip this event
 		}
 
 		if err := mysqlWriter.Execute(sql, args); err != nil {
 			return fmt.Errorf("failed to execute: %w", err)
 		}
-		log.Printf("Applied: table=%s op=%s",
-			event.SourceTable,
-			event.GetOperation().String())
+		logger.Log.Info("Applied",
+			zap.String("table", event.SourceTable),
+			zap.String("op", event.GetOperation().String()))
 		return nil
 	}
 
-	kafkaConsumer, err := consumer.New(brokers, groupID, handler)
+	kafkaConsumer, err := consumer.New(cfg, handler)
 	if err != nil {
-		log.Fatalf("Failed to create consumer: %v", err)
+		logger.Log.Fatal("Failed to create consumer", zap.Error(err))
 	}
 	defer kafkaConsumer.Close()
 
@@ -71,18 +81,18 @@ func main() {
 	// Start consumer in Background
 	go func() {
 		if err := kafkaConsumer.Start(ctx); err != nil {
-			log.Printf("Consumer stopped: %v", err)
+			logger.Log.Error("Consumer stopped", zap.Error(err))
 		}
 	}()
 
-	log.Println("CDCConsuemr running. Press Ctrl+C to stop")
+	logger.Log.Info("CDCConsuemr running. Press Ctrl+C to stop")
 
 	// Wait for shutdown signal
 	<-sigterm
-	log.Println("Shutdown signal received")
+	logger.Log.Info("Shutdown signal received")
 
 	// Cancel context to stop consumer
 	cancel()
 
-	log.Println("CDC Consumer stopped")
+	logger.Log.Info("CDC Consumer stopped")
 }

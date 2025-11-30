@@ -2,20 +2,20 @@ package processor
 
 import (
 	"fmt"
+	"github.com/sparkiss/pos-cdc/internal/models"
+	"github.com/sparkiss/pos-cdc/internal/schema"
 	"strings"
 	"time"
-
-	"github.com/sparkiss/pos-cdc/internal/models"
 )
 
 type Processor struct {
-	// TODO: Add schema cache for PK lookup
-	// for now, we assume "id" is the PK
-
+	schema *schema.SchemaCache
 }
 
-func New() *Processor {
-	return &Processor{}
+func New(schemaCache *schema.SchemaCache) *Processor {
+	return &Processor{
+		schema: schemaCache,
+	}
 }
 
 func (p *Processor) BuildSQL(event *models.CDCEvent) (string, []any, error) {
@@ -41,7 +41,6 @@ func (p *Processor) buildDelete(event *models.CDCEvent) (string, []any, error) {
 	var updateClauses []string
 
 	for key, value := range event.Payload {
-		// Skip Debezium metadata fields
 		if strings.HasPrefix(key, "__") {
 			continue
 		}
@@ -50,20 +49,17 @@ func (p *Processor) buildDelete(event *models.CDCEvent) (string, []any, error) {
 		placeholders = append(placeholders, "?")
 		values = append(values, value)
 
-		// For ON DUPLICATE KEY UPDATE (skip primary key)
-		if key != "id" {
+		// Skip primary key in ON DUPLICATE KEY UPDATE
+		if !p.schema.IsPrimaryKey(event.SourceTable, key) {
 			updateClauses = append(updateClauses, fmt.Sprintf("`%s` = VALUES(`%s`)", key, key))
 		}
 	}
 
-	// Add deleted_at = NULL (clear soft delete on insert/re-insert)
 	columns = append(columns, "`deleted_at`")
 	placeholders = append(placeholders, "?")
 	values = append(values, nil)
 	updateClauses = append(updateClauses, "`deleted_at` = NULL")
 
-	// Build the SQL
-	// FIXME: Table name should be properly escaped/validated
 	sql := fmt.Sprintf(
 		"INSERT INTO `%s` (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s",
 		event.SourceTable,
@@ -78,20 +74,32 @@ func (p *Processor) buildDelete(event *models.CDCEvent) (string, []any, error) {
 func (p *Processor) buildUpdate(event *models.CDCEvent) (string, []any, error) {
 	var setClauses []string
 	var values []any
-	var primaryKey string
-	var primaryValue any
+	var pkValues []any
+
+	// Get primary keys for this table
+	pks, err := p.schema.GetPrimaryKeys(event.SourceTable)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to get primary keys: %w", err)
+	}
+
+	// Helper to check if column is PK
+	isPK := func(col string) bool {
+		for _, pk := range pks {
+			if pk == col {
+				return true
+			}
+		}
+		return false
+	}
 
 	for key, value := range event.Payload {
-		// Skip metadata
 		if strings.HasPrefix(key, "__") {
 			continue
 		}
 
-		// FIXME: Hardcoded primary key assumption
-		// TODO: Look up actual primary key from information_schema
-		if key == "id" {
-			primaryKey = key
-			primaryValue = value
+		// Check if this column is a primary key
+		if isPK(key) {
+			pkValues = append(pkValues, value)
 			continue
 		}
 
@@ -99,18 +107,22 @@ func (p *Processor) buildUpdate(event *models.CDCEvent) (string, []any, error) {
 		values = append(values, value)
 	}
 
-	if primaryKey == "" {
-		return "", nil, fmt.Errorf("no primary key found in event")
+	if len(pkValues) != len(pks) {
+		return "", nil, fmt.Errorf("missing primary key values in event")
 	}
 
-	// Add primary key value for WHERE clause
-	values = append(values, primaryValue)
+	// Build WHERE clause (supports composite keys)
+	var whereClauses []string
+	for _, pk := range pks {
+		whereClauses = append(whereClauses, fmt.Sprintf("`%s` = ?", pk))
+	}
+	values = append(values, pkValues...)
 
 	sql := fmt.Sprintf(
-		"UPDATE `%s` SET %s WHERE `%s` = ?",
+		"UPDATE `%s` SET %s WHERE %s",
 		event.SourceTable,
 		strings.Join(setClauses, ", "),
-		primaryKey,
+		strings.Join(whereClauses, " AND "),
 	)
 
 	return sql, values, nil
@@ -119,34 +131,38 @@ func (p *Processor) buildUpdate(event *models.CDCEvent) (string, []any, error) {
 // buildSoftDelete creates an UPDATE that sets deleted_at
 // This is the key difference: source does DELETE, we do soft delete
 func (p *Processor) buildInsert(event *models.CDCEvent) (string, []any, error) {
-	// Find the primary key in the payload
-	var primaryKey string
-	var primaryValue any
+	// Get primary keys for this table
+	pks, err := p.schema.GetPrimaryKeys(event.SourceTable)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to get primary keys: %w", err)
+	}
 
-	for key, value := range event.Payload {
-		// FIXME: Hardcoded - should lookup actual PK
-		if key == "id" {
-			primaryKey = key
-			primaryValue = value
-			break
+	// Find primary key values in payload
+	var pkValues []any
+	for _, pk := range pks {
+		if value, ok := event.Payload[pk]; ok {
+			pkValues = append(pkValues, value)
 		}
 	}
 
-	if primaryKey == "" {
-		return "", nil, fmt.Errorf("no primary key found for delete")
+	if len(pkValues) != len(pks) {
+		return "", nil, fmt.Errorf("missing primary key values for soft delete")
 	}
 
-	// Soft delete: set deleted_at to current time
+	// Build WHERE clause using pks order
+	var whereClauses []string
+	for _, pk := range pks {
+		whereClauses = append(whereClauses, fmt.Sprintf("`%s` = ?", pk))
+	}
+
 	sql := fmt.Sprintf(
-		"UPDATE `%s` SET `deleted_at` = ? WHERE `%s` = ?",
+		"UPDATE `%s` SET `deleted_at` = ? WHERE %s",
 		event.SourceTable,
-		primaryKey,
+		strings.Join(whereClauses, " AND "),
 	)
 
-	values := []any{
-		time.Now().UTC(), // deleted_at timestamp
-		primaryValue,     // WHERE id = ?
-	}
+	values := []any{time.Now().UTC()}
+	values = append(values, pkValues...)
 
 	return sql, values, nil
 }
