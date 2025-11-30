@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -34,6 +35,9 @@ type Config struct {
 	// Monitoring
 	MetricsPort int
 	HealthPort  int
+
+	Timezone string
+	Location *time.Location
 }
 
 // DBConfig holds database connection settings
@@ -72,12 +76,20 @@ func Load() (*Config, error) {
 		ExcludedTables:       parseList(getEnv("EXCLUDED_TABLES", "")),
 		MetricsPort:          getEnvInt("METRICS_PORT", 9090),
 		HealthPort:           getEnvInt("HEALTH_PORT", 8081),
+		Timezone:             getEnv("TIMEZONE", "UTC"),
 	}
 
 	// Validate required fields
 	if cfg.TargetDB.Password == "" {
 		return nil, fmt.Errorf("TARGET_DB_PASSWORD is required")
 	}
+
+	// Parse timezone
+	loc, err := time.LoadLocation(cfg.Timezone)
+	if err != nil {
+		return nil, fmt.Errorf("invalid timezone %s: %w", cfg.Timezone, err)
+	}
+	cfg.Location = loc
 
 	return cfg, nil
 }

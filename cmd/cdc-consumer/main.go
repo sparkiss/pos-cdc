@@ -43,7 +43,7 @@ func main() {
 
 	schemaCache := schema.New(mysqlWriter.DB(), cfg.TargetDB.Database)
 
-	proc := processor.New(schemaCache)
+	proc := processor.New(schemaCache, cfg.Location)
 
 	// Create event handler
 	handler := func(event *models.CDCEvent) error {
@@ -58,6 +58,9 @@ func main() {
 		if err := mysqlWriter.Execute(sql, args); err != nil {
 			return fmt.Errorf("failed to execute: %w", err)
 		}
+		//logger.Log.Debug("BuildSQL result",
+		//    zap.String("sql", sql),
+		//    zap.Any("args", args))
 		logger.Log.Info("Applied",
 			zap.String("table", event.SourceTable),
 			zap.String("op", event.GetOperation().String()))
