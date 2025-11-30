@@ -30,9 +30,9 @@ func New(cfg *config.Config, handler func(*models.CDCEvent) error) (*Consumer, e
 
 	saramaCfg.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 	if cfg.KafkaAutoOffsetReset == "latest" {
-		saramaCfg.Consumer.Offsets.Initial = sarama.OffsetOldest
-	} else {
 		saramaCfg.Consumer.Offsets.Initial = sarama.OffsetNewest
+	} else {
+		saramaCfg.Consumer.Offsets.Initial = sarama.OffsetOldest
 	}
 
 	client, err := sarama.NewConsumerGroup(cfg.KafkaBrokers, cfg.KafkaGroupID, saramaCfg)
