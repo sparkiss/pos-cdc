@@ -10,7 +10,7 @@ import (
 
 type Processor struct {
 	// TODO: Add schema cache for PK lookup
-	// for now, we assume "id" is the PK
+	// for now, we assume "ID" is the PK
 
 }
 
@@ -51,7 +51,7 @@ func (p *Processor) buildDelete(event *models.CDCEvent) (string, []any, error) {
 		values = append(values, value)
 
 		// For ON DUPLICATE KEY UPDATE (skip primary key)
-		if key != "id" {
+		if key != "ID" {
 			updateClauses = append(updateClauses, fmt.Sprintf("`%s` = VALUES(`%s`)", key, key))
 		}
 	}
@@ -89,7 +89,7 @@ func (p *Processor) buildUpdate(event *models.CDCEvent) (string, []any, error) {
 
 		// FIXME: Hardcoded primary key assumption
 		// TODO: Look up actual primary key from information_schema
-		if key == "id" {
+		if key == "ID" {
 			primaryKey = key
 			primaryValue = value
 			continue
@@ -125,7 +125,7 @@ func (p *Processor) buildInsert(event *models.CDCEvent) (string, []any, error) {
 
 	for key, value := range event.Payload {
 		// FIXME: Hardcoded - should lookup actual PK
-		if key == "id" {
+		if key == "ID" {
 			primaryKey = key
 			primaryValue = value
 			break
