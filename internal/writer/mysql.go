@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"log"
 	"time"
+
+	"github.com/sparkiss/pos-cdc/internal/config"
+	"github.com/sparkiss/pos-cdc/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type MySQLWriter struct {
@@ -14,29 +17,9 @@ type MySQLWriter struct {
 	backoffMS  int
 }
 
-// FIXME: separate to Config model later
-type Config struct {
-	Host       string
-	Port       int
-	User       string
-	Password   string
-	Database   string
-	MaxRetries int
-	BackoffMS  int
-}
+func New(cfg *config.Config) (*MySQLWriter, error) {
 
-func New(cfg Config) (*MySQLWriter, error) {
-
-	//format: ser:password@tcp(host:port)/database?options
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&loc=UTC",
-		cfg.User,
-		cfg.Password,
-		cfg.Host,
-		cfg.Port,
-		cfg.Database,
-	)
-
-	db, err := sql.Open("mysql", dsn)
+	db, err := sql.Open("mysql", cfg.TargetDSN())
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -51,12 +34,16 @@ func New(cfg Config) (*MySQLWriter, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	log.Printf("Connected to MySQL: %s:%d/%s", cfg.Host, cfg.Port, cfg.Database)
+	logger.Log.Info("Connected to MySQL",
+
+		zap.String("host", cfg.TargetDB.Host),
+		zap.Int("port", cfg.TargetDB.Port),
+		zap.String("database", cfg.TargetDB.Database))
 
 	return &MySQLWriter{
 		db:         db,
 		maxRetries: cfg.MaxRetries,
-		backoffMS:  cfg.BackoffMS,
+		backoffMS:  cfg.RetryBackoffMS,
 	}, nil
 }
 
@@ -65,7 +52,9 @@ func (w *MySQLWriter) Execute(sqlStr string, args []any) error {
 	for attempt := 0; attempt <= w.maxRetries; attempt++ {
 		if attempt > 0 {
 			backoff := time.Duration(w.backoffMS*(1<<uint(attempt-1))) * time.Millisecond
-			log.Printf("Retry %d/%d after %v", attempt, w.maxRetries, backoff)
+			logger.Log.Warn("Retry %d/%d after %v",
+				zap.Int("attempt", attempt),
+				zap.Duration("backoff", backoff))
 			time.Sleep(backoff)
 		}
 
@@ -74,9 +63,9 @@ func (w *MySQLWriter) Execute(sqlStr string, args []any) error {
 			return nil // Success!
 		}
 
-		log.Printf("Query faield (attempt %d): %v", attempt, err)
-		log.Printf("SQL: %s", sqlStr)
-		log.Printf("Args: %v", args)
+		logger.Log.Error("Query faield",
+			zap.Int("attempt", attempt),
+			zap.Error(err))
 	}
 
 	return fmt.Errorf("failed after %d retries: %w", w.maxRetries, err)
