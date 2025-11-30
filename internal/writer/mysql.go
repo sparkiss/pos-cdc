@@ -78,3 +78,7 @@ func (w *MySQLWriter) Close() error {
 func (w *MySQLWriter) Ping() error {
 	return w.db.Ping()
 }
+
+func (w *MySQLWriter) DB() *sql.DB {
+	return w.db
+}

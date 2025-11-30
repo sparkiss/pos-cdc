@@ -14,6 +14,7 @@ import (
 	"github.com/sparkiss/pos-cdc/internal/consumer"
 	"github.com/sparkiss/pos-cdc/internal/models"
 	"github.com/sparkiss/pos-cdc/internal/processor"
+	"github.com/sparkiss/pos-cdc/internal/schema"
 	"github.com/sparkiss/pos-cdc/internal/writer"
 	"github.com/sparkiss/pos-cdc/pkg/logger"
 )
@@ -40,14 +41,18 @@ func main() {
 	}
 	defer mysqlWriter.Close()
 
-	proc := processor.New()
+	schemaCache := schema.New(mysqlWriter.DB(), cfg.TargetDB.Database)
+
+	proc := processor.New(schemaCache)
 
 	// Create event handler
 	handler := func(event *models.CDCEvent) error {
 		sql, args, err := proc.BuildSQL(event)
 		if err != nil {
-			logger.Log.Debug("Skipping excluded table",
-				zap.String("table", event.SourceTable))
+			logger.Log.Debug("Skipping table",
+				zap.String("table", event.SourceTable),
+				zap.Error(err))
+			return nil // Skip this event
 		}
 
 		if err := mysqlWriter.Execute(sql, args); err != nil {
