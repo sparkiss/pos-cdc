@@ -66,6 +66,9 @@ func (w *MySQLWriter) Execute(sqlStr string, args []any) error {
 		logger.Log.Error("Query faield",
 			zap.Int("attempt", attempt),
 			zap.Error(err))
+		logger.Log.Debug("Failed Query",
+			zap.String("sql", sqlStr),
+			zap.Any("args", args))
 	}
 
 	return fmt.Errorf("failed after %d retries: %w", w.maxRetries, err)
