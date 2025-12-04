@@ -3,6 +3,7 @@ package pool
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -29,10 +30,21 @@ type DLQ struct {
 
 // NewDLQ creates a new DLQ
 func NewDLQ() *DLQ {
+	// DLQ file path in var/dlq/ directory
+	dlqPath := filepath.Join("var", "dlq", "dlq.jsonl")
+
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(filepath.Dir(dlqPath), 0755); err != nil {
+		logger.Log.Warn("Failed to create DLQ directory",
+			zap.String("path", filepath.Dir(dlqPath)),
+			zap.Error(err))
+	}
+
 	// Open DLQ file for appending
-	file, err := os.OpenFile("dlq.jsonl", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(dlqPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		logger.Log.Warn("Failed to open DLQ file, using memory only",
+			zap.String("path", dlqPath),
 			zap.Error(err))
 	}
 
