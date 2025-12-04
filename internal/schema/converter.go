@@ -6,14 +6,21 @@ import (
 )
 
 type Converter struct {
-	location *time.Location
+	sourceLocation *time.Location
+	targetLocation *time.Location
 }
 
-func NewConverter(loc *time.Location) *Converter {
-	if loc == nil {
-		loc = time.UTC
+func NewConverter(sourceLoc, targetLoc *time.Location) *Converter {
+	if sourceLoc == nil {
+		sourceLoc = time.UTC
 	}
-	return &Converter{location: loc}
+	if targetLoc == nil {
+		targetLoc = time.UTC
+	}
+	return &Converter{
+		sourceLocation: sourceLoc,
+		targetLocation: targetLoc,
+	}
 }
 
 // ConvertValue converts a Debezium payload value to the appropriate Go type
@@ -77,10 +84,26 @@ func (c *Converter) convertToDateTime(value any) any {
 }
 
 func (c *Converter) epochToMySQLDateTime(v int64) string {
-	// Debezium time.precision.mode=connect always sends datetime/timestamp
-	// as epoch milliseconds
-	t := time.UnixMilli(v)
-	return t.In(c.location).Format("2006-01-02 15:04:05")
+	// Debezium time.precision.mode=connect sends datetime/timestamp as epoch ms.
+	// However, source DB stores local time without timezone info.
+	// Debezium interprets this as UTC, so the epoch represents the wall-clock
+	// time as if it were UTC.
+	//
+	// Step 1: Get UTC time from epoch (this gives us the wall-clock values)
+	utcTime := time.UnixMilli(v)
+
+	// Step 2: Treat those wall-clock values as source timezone
+	// (e.g., "12:00" in source DB was Mountain Time, not UTC)
+	sourceWallClock := time.Date(
+		utcTime.Year(), utcTime.Month(), utcTime.Day(),
+		utcTime.Hour(), utcTime.Minute(), utcTime.Second(),
+		utcTime.Nanosecond(), c.sourceLocation,
+	)
+
+	// Step 3: Convert to target timezone
+	targetTime := sourceWallClock.In(c.targetLocation)
+
+	return targetTime.Format("2006-01-02 15:04:05")
 }
 
 func (c *Converter) convertToDate(value any) any {
@@ -98,9 +121,23 @@ func (c *Converter) convertToDate(value any) any {
 }
 
 func (c *Converter) daysToMySQLDate(days int64) string {
-	// Debezium time.precision.mode=connect sends date as days since epoch
-	t := time.Unix(days*86400, 0).UTC()
-	return t.Format("2006-01-02")
+	// Debezium time.precision.mode=connect sends date as days since epoch.
+	// Since dates have no time component, we interpret midnight UTC
+	// then apply timezone conversion which may shift the date.
+	//
+	// Step 1: Get the date at midnight UTC
+	utcTime := time.Unix(days*86400, 0).UTC()
+
+	// Step 2: Treat as source timezone midnight
+	sourceDate := time.Date(
+		utcTime.Year(), utcTime.Month(), utcTime.Day(),
+		0, 0, 0, 0, c.sourceLocation,
+	)
+
+	// Step 3: Convert to target timezone (date may shift if TZ offset differs)
+	targetDate := sourceDate.In(c.targetLocation)
+
+	return targetDate.Format("2006-01-02")
 }
 
 func (c *Converter) convertToTime(value any) any {
