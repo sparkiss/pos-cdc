@@ -76,9 +76,8 @@ func (c *Converter) convertToDateTime(value any) any {
 	case int:
 		return c.epochToMySQLDateTime(int64(v))
 	case string:
-		// With time.precision.mode=connect, strings shouldn't happen
-		// but pass through if they do (already formatted)
-		return v
+		// Fallback: parse ISO8601 string and convert to target timezone
+		return c.parseISO8601DateTime(v)
 	}
 	return value
 }
@@ -104,6 +103,33 @@ func (c *Converter) epochToMySQLDateTime(v int64) string {
 	targetTime := sourceWallClock.In(c.targetLocation)
 
 	return targetTime.Format("2006-01-02 15:04:05")
+}
+
+// parseISO8601DateTime parses ISO8601 string and converts to target timezone.
+// Handles formats like "2023-08-24T17:53:25Z" or "2023-08-24T17:53:25+00:00".
+// Returns MySQL format "2006-01-02 15:04:05" in target timezone.
+func (c *Converter) parseISO8601DateTime(s string) string {
+	// Try common ISO8601 formats
+	formats := []string{
+		time.RFC3339,           // "2006-01-02T15:04:05Z07:00"
+		"2006-01-02T15:04:05Z", // UTC with Z suffix
+		"2006-01-02T15:04:05",  // No timezone info
+		"2006-01-02 15:04:05",  // Already MySQL format
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, s); err == nil {
+			// If parsed time has no timezone info, assume source timezone
+			if format == "2006-01-02T15:04:05" || format == "2006-01-02 15:04:05" {
+				t = time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), c.sourceLocation)
+			}
+			// Convert to target timezone
+			return t.In(c.targetLocation).Format("2006-01-02 15:04:05")
+		}
+	}
+
+	// If no format matches, return as-is (let MySQL handle/reject it)
+	return s
 }
 
 func (c *Converter) convertToDate(value any) any {
