@@ -37,39 +37,60 @@ fi
 CONNECTOR_EXISTS=$(curl -s "${DEBEZIUM_URL}/connectors" | jq -r ". | index(\"${CONNECTOR_NAME}\") != null")
 
 if [ "$CONNECTOR_EXISTS" = "true" ]; then
-  # === Use Kafka Connect 3.6+ REST API for proper reset ===
+  # === Delete connector to ensure fresh config is applied ===
 
-  # 1. Stop the connector (not delete)
-  echo -e "${YELLOW}Stopping connector...${NC}"
-  curl -s -X PUT "${DEBEZIUM_URL}/connectors/${CONNECTOR_NAME}/stop" > /dev/null
-  sleep 2
+  # 1. Delete the connector (this also stops it)
+  echo -e "${YELLOW}Deleting connector...${NC}"
+  curl -s -X DELETE "${DEBEZIUM_URL}/connectors/${CONNECTOR_NAME}" > /dev/null
 
-  # 2. Delete offsets via REST API (Kafka Connect 3.6+ feature)
-  echo -e "${YELLOW}Deleting connector offsets (REST API)...${NC}"
-  RESPONSE=$(curl -s -X DELETE "${DEBEZIUM_URL}/connectors/${CONNECTOR_NAME}/offsets")
-  echo "$RESPONSE" | jq -r '.message // .'
+  # Wait for connector to be fully removed
+  echo -e "${YELLOW}Waiting for connector to be removed...${NC}"
+  for i in {1..10}; do
+    if ! curl -s "${DEBEZIUM_URL}/connectors/${CONNECTOR_NAME}" | jq -e '.name' > /dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
 
-  # 3. Delete schema history topic (required for fresh snapshot)
+  # 2. Stop Debezium container FIRST (prevents auto-creating topics with wrong policy)
+  echo -e "${YELLOW}Stopping Debezium container...${NC}"
+  docker stop debezium > /dev/null 2>&1
+
+  # 3. Delete all related topics
+  echo -e "${YELLOW}Deleting Kafka Connect internal topics...${NC}"
+  docker exec redpanda rpk topic delete debezium_offsets debezium_configs debezium_status 2>/dev/null || true
+
   echo -e "${YELLOW}Deleting schema history topic...${NC}"
   docker exec redpanda rpk topic delete ${TOPIC_PREFIX}.schema_history 2>/dev/null || true
 
-  # 4. Delete data topics
   echo -e "${YELLOW}Deleting data topics...${NC}"
-  TOPICS_TO_DELETE=$(docker exec redpanda rpk topic list | grep "^${TOPIC_PREFIX}\." | grep -v schema_history | awk '{print $1}' | tr '\n' ' ')
+  TOPICS_TO_DELETE=$(docker exec redpanda rpk topic list | grep "^${TOPIC_PREFIX}" | awk '{print $1}' | tr '\n' ' ')
   if [ -n "$TOPICS_TO_DELETE" ]; then
     docker exec redpanda rpk topic delete $TOPICS_TO_DELETE 2>/dev/null || true
   fi
   sleep 2
 
-  # 5. Resume connector (will do fresh snapshot)
-  echo -e "${YELLOW}Resuming connector...${NC}"
-  curl -s -X PUT "${DEBEZIUM_URL}/connectors/${CONNECTOR_NAME}/resume" > /dev/null
+  # 4. Recreate internal topics with cleanup.policy=compact BEFORE starting Debezium
+  echo -e "${YELLOW}Recreating internal topics with cleanup.policy=compact...${NC}"
+  docker exec redpanda rpk topic create debezium_offsets -c cleanup.policy=compact
+  docker exec redpanda rpk topic create debezium_configs -c cleanup.policy=compact
+  docker exec redpanda rpk topic create debezium_status -c cleanup.policy=compact
 
+  # 5. Start Debezium container
+  echo -e "${YELLOW}Starting Debezium container...${NC}"
+  docker start debezium > /dev/null 2>&1
+
+  # Wait for Debezium to be ready
+  echo -e "${YELLOW}Waiting for Debezium to be ready...${NC}"
+  for i in {1..30}; do
+    if curl -s "${DEBEZIUM_URL}/" > /dev/null 2>&1; then
+      break
+    fi
+    sleep 1
+  done
+
+  echo -e "${YELLOW}Recreating connector with latest config...${NC}"
 else
-  # === Connector doesn't exist - create fresh ===
-
-  echo -e "${YELLOW}Connector not found, creating fresh...${NC}"
-
   # Delete any leftover topics
   echo -e "${YELLOW}Deleting leftover topics...${NC}"
   TOPICS_TO_DELETE=$(docker exec redpanda rpk topic list | grep "^${TOPIC_PREFIX}" | awk '{print $1}' | tr '\n' ' ')
@@ -77,35 +98,35 @@ else
     docker exec redpanda rpk topic delete $TOPICS_TO_DELETE 2>/dev/null || true
   fi
   sleep 2
+fi
 
-  # Create connector
-  echo -e "${YELLOW}Creating connector...${NC}"
-  if [ ! -f "${CONNECTOR_CONFIG}" ]; then
-    echo -e "${RED}Error: Config file not found: ${CONNECTOR_CONFIG}${NC}"
+# === Create connector (shared logic for both branches) ===
+echo -e "${YELLOW}Creating connector...${NC}"
+if [ ! -f "${CONNECTOR_CONFIG}" ]; then
+  echo -e "${RED}Error: Config file not found: ${CONNECTOR_CONFIG}${NC}"
+  exit 1
+fi
+
+# Retry connector creation (worker may not be ready)
+for attempt in {1..10}; do
+  RESPONSE=$(curl -sS -X POST "${DEBEZIUM_URL}/connectors" \
+    -H "Content-Type: application/json" \
+    -d @"${CONNECTOR_CONFIG}" 2>/dev/null)
+
+  if echo "$RESPONSE" | jq -e '.name' > /dev/null 2>&1; then
+    echo -e "${GREEN}Connector created: $(echo "$RESPONSE" | jq -r '.name')${NC}"
+    break
+  fi
+
+  if [ $attempt -eq 10 ]; then
+    echo -e "${RED}Failed to create connector after 10 attempts${NC}"
+    echo "$RESPONSE"
     exit 1
   fi
 
-  # Retry connector creation (worker may not be ready)
-  for attempt in {1..10}; do
-    RESPONSE=$(curl -sS -X POST "${DEBEZIUM_URL}/connectors" \
-      -H "Content-Type: application/json" \
-      -d @"${CONNECTOR_CONFIG}" 2>/dev/null)
-
-    if echo "$RESPONSE" | jq -e '.name' > /dev/null 2>&1; then
-      echo -e "${GREEN}Connector created: $(echo "$RESPONSE" | jq -r '.name')${NC}"
-      break
-    fi
-
-    if [ $attempt -eq 10 ]; then
-      echo -e "${RED}Failed to create connector after 10 attempts${NC}"
-      echo "$RESPONSE"
-      exit 1
-    fi
-
-    echo "Waiting for worker to be ready (attempt $attempt/10)..."
-    sleep 3
-  done
-fi
+  echo "Waiting for worker to be ready (attempt $attempt/10)..."
+  sleep 3
+done
 
 # Wait for connector to start running
 echo -e "${YELLOW}Waiting for snapshot to start...${NC}"

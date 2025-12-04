@@ -88,5 +88,8 @@ func main() {
 	// Cancel context to stop consumer
 	cancel()
 
+	// Stop worker pool (drain queue and wait for workers)
+	workerPool.Stop()
+
 	logger.Log.Info("CDC Consumer stopped")
 }
