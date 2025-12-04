@@ -18,6 +18,7 @@ func Init(level string, format string) error {
 	} else {
 		config = zap.NewDevelopmentConfig()
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		config.OutputPaths = []string{"stdout"}
 	}
 
 	// Set log level

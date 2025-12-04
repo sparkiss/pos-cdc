@@ -36,8 +36,13 @@ type Config struct {
 	MetricsPort int
 	HealthPort  int
 
-	Timezone string
-	Location *time.Location
+	// Timezone settings
+	// Source: how datetimes are stored in source DB (Debezium interprets as UTC)
+	// Target: how datetimes should be stored in target DB
+	SourceTimezone string
+	SourceLocation *time.Location
+	TargetTimezone string
+	TargetLocation *time.Location
 }
 
 // DBConfig holds database connection settings
@@ -76,7 +81,8 @@ func Load() (*Config, error) {
 		ExcludedTables:       parseList(getEnv("EXCLUDED_TABLES", "")),
 		MetricsPort:          getEnvInt("METRICS_PORT", 9090),
 		HealthPort:           getEnvInt("HEALTH_PORT", 8081),
-		Timezone:             getEnv("TIMEZONE", "UTC"),
+		SourceTimezone:       getEnv("SOURCE_DB_TIMEZONE", "UTC"),
+		TargetTimezone:       getEnv("TARGET_DB_TIMEZONE", "UTC"),
 	}
 
 	// Validate required fields
@@ -84,12 +90,19 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("TARGET_DB_PASSWORD is required")
 	}
 
-	// Parse timezone
-	loc, err := time.LoadLocation(cfg.Timezone)
+	// Parse source timezone
+	sourceLoc, err := time.LoadLocation(cfg.SourceTimezone)
 	if err != nil {
-		return nil, fmt.Errorf("invalid timezone %s: %w", cfg.Timezone, err)
+		return nil, fmt.Errorf("invalid SOURCE_DB_TIMEZONE %s: %w", cfg.SourceTimezone, err)
 	}
-	cfg.Location = loc
+	cfg.SourceLocation = sourceLoc
+
+	// Parse target timezone
+	targetLoc, err := time.LoadLocation(cfg.TargetTimezone)
+	if err != nil {
+		return nil, fmt.Errorf("invalid TARGET_DB_TIMEZONE %s: %w", cfg.TargetTimezone, err)
+	}
+	cfg.TargetLocation = targetLoc
 
 	return cfg, nil
 }

@@ -11,14 +11,19 @@ import (
 )
 
 type Processor struct {
-	schema    *schema.SchemaCache
-	converter *schema.Converter
+	schema         *schema.SchemaCache
+	converter      *schema.Converter
+	targetLocation *time.Location
 }
 
-func New(schemaCache *schema.SchemaCache, location *time.Location) *Processor {
+func New(schemaCache *schema.SchemaCache, sourceLoc, targetLoc *time.Location) *Processor {
+	if targetLoc == nil {
+		targetLoc = time.UTC
+	}
 	return &Processor{
-		schema:    schemaCache,
-		converter: schema.NewConverter(location),
+		schema:         schemaCache,
+		converter:      schema.NewConverter(sourceLoc, targetLoc),
+		targetLocation: targetLoc,
 	}
 }
 
@@ -98,7 +103,7 @@ func (p *Processor) buildDelete(table string, payload map[string]any, tableSchem
 		strings.Join(whereClauses, " AND "),
 	)
 
-	values := []any{time.Now().UTC()}
+	values := []any{time.Now().In(p.targetLocation)}
 	values = append(values, pkValues...)
 
 	return sql, values, nil
