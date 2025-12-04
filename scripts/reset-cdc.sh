@@ -32,10 +32,9 @@ echo -e "${YELLOW}Deleting connector...${NC}"
 curl -s -X DELETE "${DEBEZIUM_URL}/connectors/${CONNECTOR_NAME}" || true
 sleep 2
 
-# 2. Delete data topics (but keep schema_history for Debezium)
+# 2. Delete data topics and schema_history
 echo -e "${YELLOW}Deleting data topics...${NC}"
-# Get list of topics matching prefix, exclude schema_history
-TOPICS_TO_DELETE=$(docker exec redpanda rpk topic list | grep "^${TOPIC_PREFIX}\." | grep -v "schema_history" | awk '{print $1}' | tr '\n' ' ')
+TOPICS_TO_DELETE=$(docker exec redpanda rpk topic list | grep "^${TOPIC_PREFIX}" | awk '{print $1}' | tr '\n' ' ')
 if [ -n "$TOPICS_TO_DELETE" ]; then
   docker exec redpanda rpk topic delete $TOPICS_TO_DELETE 2>/dev/null || true
 fi
@@ -56,11 +55,11 @@ curl -s -X POST "${DEBEZIUM_URL}/connectors" \
   -H "Content-Type: application/json" \
   -d @"${CONNECTOR_CONFIG}" | jq .
 
-# 4. Wait for connector to start
+# 5. Wait for connector to start
 echo -e "${YELLOW}Waiting for connector to start...${NC}"
 sleep 10
 
-# 5. Check connector status
+# 6. Check connector status
 STATUS=$(curl -s "${DEBEZIUM_URL}/connectors/${CONNECTOR_NAME}/status" | jq -r '.tasks[0].state // "UNKNOWN"')
 if [ "$STATUS" = "RUNNING" ]; then
   echo -e "${GREEN}Connector is RUNNING${NC}"
@@ -70,11 +69,11 @@ else
   exit 1
 fi
 
-# 6. Reset consumer offset (if consumer group exists)
+# 7. Reset consumer offset (if consumer group exists)
 echo -e "${YELLOW}Resetting consumer offset...${NC}"
 docker exec redpanda rpk group seek "${CONSUMER_GROUP}" --to start 2>/dev/null || echo "Consumer group not found (will be created on first run)"
 
-# 7. Optional: Truncate target tables
+# 8. Optional: Truncate target tables
 if [ "$1" = "--truncate-target" ]; then
   echo -e "${YELLOW}Truncating target tables...${NC}"
   # Source .env for credentials
