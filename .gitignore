@@ -45,3 +45,7 @@ configs/debezium-mysql-connector.json
 # Keep examples
 !configs/*.example.json
 !configs/*.json.example
+
+# Runtime data (variable files generated at runtime)
+var/
+!var/.gitkeep

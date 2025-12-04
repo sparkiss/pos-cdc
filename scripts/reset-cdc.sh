@@ -40,16 +40,12 @@ if [ -n "$TOPICS_TO_DELETE" ]; then
 fi
 sleep 2
 
-# 3. Reset Debezium internal topics (must have cleanup.policy=compact)
-echo -e "${YELLOW}Resetting Debezium internal topics...${NC}"
+# 2.5 Delete Debezium internal topics to force fresh snapshot
+echo -e "${YELLOW}Deleting Debezium internal topics...${NC}"
 docker exec redpanda rpk topic delete debezium_offsets debezium_configs debezium_status 2>/dev/null || true
 sleep 2
-docker exec redpanda rpk topic create debezium_offsets -p 1 -r 1 -c cleanup.policy=compact 2>/dev/null || true
-docker exec redpanda rpk topic create debezium_configs -p 1 -r 1 -c cleanup.policy=compact 2>/dev/null || true
-docker exec redpanda rpk topic create debezium_status -p 1 -r 1 -c cleanup.policy=compact 2>/dev/null || true
-sleep 2
 
-# 4. Recreate connector
+# 3. Recreate connector
 echo -e "${YELLOW}Creating connector...${NC}"
 if [ ! -f "${CONNECTOR_CONFIG}" ]; then
   echo -e "${RED}Error: Config file not found: ${CONNECTOR_CONFIG}${NC}"
