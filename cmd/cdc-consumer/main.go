@@ -13,6 +13,7 @@ import (
 	"github.com/sparkiss/pos-cdc/internal/config"
 	"github.com/sparkiss/pos-cdc/internal/consumer"
 	"github.com/sparkiss/pos-cdc/internal/models"
+	"github.com/sparkiss/pos-cdc/internal/pool"
 	"github.com/sparkiss/pos-cdc/internal/processor"
 	"github.com/sparkiss/pos-cdc/internal/schema"
 	"github.com/sparkiss/pos-cdc/internal/writer"
@@ -33,7 +34,10 @@ func main() {
 	}
 	defer logger.Sync()
 
-	logger.Log.Info("CDC Consumer starting", zap.String("log_level", cfg.LogLevel))
+	logger.Log.Info("CDC Consumer starting",
+		zap.String("log_level", cfg.LogLevel),
+		zap.String("source_tz", cfg.SourceTimezone),
+		zap.String("target_tz", cfg.TargetTimezone))
 
 	mysqlWriter, err := writer.New(cfg)
 	if err != nil {
@@ -43,39 +47,26 @@ func main() {
 
 	schemaCache := schema.New(mysqlWriter.DB(), cfg.TargetDB.Database)
 
-	proc := processor.New(schemaCache, cfg.Location)
+	proc := processor.New(schemaCache, cfg.SourceLocation, cfg.TargetLocation)
 
-	// Create event handler
+	// Create worker pool
+	workerPool := pool.New(cfg.WorkerCount, cfg.BatchSize, proc, mysqlWriter)
+
+	// Create context with cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	workerPool.Start(ctx)
+
 	handler := func(event *models.CDCEvent) error {
-		sql, args, err := proc.BuildSQL(event)
-		if err != nil {
-			logger.Log.Debug("Skipping table",
-				zap.String("table", event.SourceTable),
-				zap.Error(err))
-			return nil // Skip this event
-		}
-
-		if err := mysqlWriter.Execute(sql, args); err != nil {
-			return fmt.Errorf("failed to execute: %w", err)
-		}
-		//logger.Log.Debug("BuildSQL result",
-		//    zap.String("sql", sql),
-		//    zap.Any("args", args))
-		logger.Log.Info("Applied",
-			zap.String("table", event.SourceTable),
-			zap.String("op", event.GetOperation().String()))
+		workerPool.Submit(event)
 		return nil
 	}
-
 	kafkaConsumer, err := consumer.New(cfg, handler)
 	if err != nil {
 		logger.Log.Fatal("Failed to create consumer", zap.Error(err))
 	}
 	defer kafkaConsumer.Close()
-
-	// Create context with cancellation
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// Handle shutdown signals (Ctrl+C)
 	sigterm := make(chan os.Signal, 1)
