@@ -41,6 +41,11 @@ if [ -n "$TOPICS_TO_DELETE" ]; then
 fi
 sleep 2
 
+# 2.5 Delete Debezium internal topics to force fresh snapshot
+echo -e "${YELLOW}Deleting Debezium internal topics...${NC}"
+docker exec redpanda rpk topic delete debezium_offsets debezium_configs debezium_status 2>/dev/null || true
+sleep 2
+
 # 3. Recreate connector
 echo -e "${YELLOW}Creating connector...${NC}"
 if [ ! -f "${CONNECTOR_CONFIG}" ]; then
