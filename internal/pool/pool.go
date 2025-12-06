@@ -2,6 +2,8 @@ package pool
 
 import (
 	"context"
+	"fmt"
+	"hash/fnv"
 	"sync"
 	"time"
 
@@ -13,11 +15,21 @@ import (
 	"github.com/sparkiss/pos-cdc/pkg/logger"
 )
 
+// Worker represents a single worker with its own queue
+type Worker struct {
+	id        int
+	queue     chan *models.CDCEvent
+	batchSize int
+	processor *processor.Processor
+	writer    *writer.MySQLWriter
+	dlq       *DLQ
+	wg        *sync.WaitGroup
+}
+
 // WorkerPool manages concurrent event processing
 type WorkerPool struct {
-	workers   int
+	workers   []*Worker
 	batchSize int
-	queue     chan *models.CDCEvent
 	processor *processor.Processor
 	writer    *writer.MySQLWriter
 	dlq       *DLQ
@@ -25,86 +37,110 @@ type WorkerPool struct {
 }
 
 // New creates a new WorkerPool
-func New(workers, batchSize int, proc *processor.Processor, w *writer.MySQLWriter) *WorkerPool {
-	return &WorkerPool{
-		workers:   workers,
+func New(numWorkers, batchSize int, proc *processor.Processor, w *writer.MySQLWriter) *WorkerPool {
+	wp := &WorkerPool{
+		workers:   make([]*Worker, numWorkers),
 		batchSize: batchSize,
-		queue:     make(chan *models.CDCEvent, batchSize*workers),
 		processor: proc,
 		writer:    w,
 		dlq:       NewDLQ(),
 	}
+
+	for i := range numWorkers {
+		wp.workers[i] = &Worker{
+			id:        i,
+			queue:     make(chan *models.CDCEvent, batchSize*2),
+			batchSize: batchSize,
+			processor: proc,
+			writer:    w,
+			dlq:       wp.dlq,
+			wg:        &wp.wg,
+		}
+	}
+	return wp
 }
 
 // Start launches worker goroutines
 func (wp *WorkerPool) Start(ctx context.Context) {
-	for i := 0; i < wp.workers; i++ {
+	for _, worker := range wp.workers {
 		wp.wg.Add(1)
-		go wp.worker(ctx, i)
+		go worker.run(ctx)
 	}
 	logger.Log.Info("Worker pool started",
-		zap.Int("workers", wp.workers),
+		zap.Int("workers", len(wp.workers)),
 		zap.Int("batch_size", wp.batchSize))
 }
 
-// Submit adds an event to the processing queue
+// Submit routes event to worker based on topic+partition hash
 func (wp *WorkerPool) Submit(event *models.CDCEvent) {
-	wp.queue <- event
+	// Topic-aware routing: same topic+partition always goes to same worker
+	// This handles the case where all topics have partition 0
+	key := fmt.Sprintf("%s:%d", event.Topic, event.Partition)
+	workerIdx := int(fnv32(key)) % len(wp.workers)
+	wp.workers[workerIdx].queue <- event
 }
 
-// Stop waits for all workers to finish
+func fnv32(key string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(key))
+	return h.Sum32()
+
+}
+
 func (wp *WorkerPool) Stop() {
-	close(wp.queue)
+	for _, worker := range wp.workers {
+		close(worker.queue)
+	}
 	wp.wg.Wait()
 	logger.Log.Info("Worker pool stopped")
 }
 
-func (wp *WorkerPool) worker(ctx context.Context, id int) {
-	defer wp.wg.Done()
+func (w *Worker) run(ctx context.Context) {
+	defer w.wg.Done()
 
-	batch := make([]*models.CDCEvent, 0, wp.batchSize)
+	batch := make([]*models.CDCEvent, 0, w.batchSize)
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case event, ok := <-wp.queue:
+		case event, ok := <-w.queue:
 			if !ok {
 				// Channel closed, process remaining batch
 				if len(batch) > 0 {
-					wp.processBatch(batch, id)
+					w.processBatch(batch)
 				}
 				return
 			}
 
 			batch = append(batch, event)
-			if len(batch) >= wp.batchSize {
-				wp.processBatch(batch, id)
-				batch = batch[:0] // Reset slice, keep capacity
+			if len(batch) >= w.batchSize {
+				w.processBatch(batch)
+				batch = batch[:0]
 			}
 
 		case <-ticker.C:
 			// Flush incomplete batches after timeout
 			if len(batch) > 0 {
-				wp.processBatch(batch, id)
+				w.processBatch(batch)
 				batch = batch[:0]
 			}
 
 		case <-ctx.Done():
 			// Process remaining batch before exit
 			if len(batch) > 0 {
-				wp.processBatch(batch, id)
+				w.processBatch(batch)
 			}
 			return
 		}
 	}
 }
 
-func (wp *WorkerPool) processBatch(events []*models.CDCEvent, workerID int) {
+func (w *Worker) processBatch(events []*models.CDCEvent) {
 	queries := make([]writer.Query, 0, len(events))
 
 	for _, event := range events {
-		sql, args, err := wp.processor.BuildSQL(event)
+		sql, args, err := w.processor.BuildSQL(event)
 		if err != nil {
 			logger.Log.Debug("Skipping event in batch",
 				zap.String("table", event.SourceTable),
@@ -124,20 +160,20 @@ func (wp *WorkerPool) processBatch(events []*models.CDCEvent, workerID int) {
 		return
 	}
 
-	if err := wp.writer.ExecuteBatch(queries); err != nil {
+	if err := w.writer.ExecuteBatch(queries); err != nil {
 		logger.Log.Error("Batch processing failed",
-			zap.Int("worker", workerID),
+			zap.Int("worker", w.id),
 			zap.Int("batch_size", len(queries)),
 			zap.Error(err))
 
 		// Send failed events to DLQ
 		for _, event := range events {
-			wp.dlq.Send(event, err)
+			w.dlq.Send(event, err)
 		}
 		return
 	}
 
-	logger.Log.Info("Batch processed",
-		zap.Int("worker", workerID),
+	logger.Log.Debug("Batch processed",
+		zap.Int("worker", w.id),
 		zap.Int("count", len(queries)))
 }
