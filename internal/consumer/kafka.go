@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
+
 	//"maps"
 	//"slices"
-	"go.uber.org/zap"
 	"strings"
+
+	"go.uber.org/zap"
 
 	"github.com/IBM/sarama"
 	"github.com/sparkiss/pos-cdc/internal/config"
@@ -22,6 +25,8 @@ type Consumer struct {
 	config       *config.Config
 	client       sarama.ConsumerGroup
 	eventHandler func(*models.CDCEvent) error
+	connected    bool
+	mu           sync.RWMutex
 }
 
 func New(cfg *config.Config, handler func(*models.CDCEvent) error) (*Consumer, error) {
@@ -103,7 +108,21 @@ func (c *Consumer) getTopics() ([]string, error) {
 
 }
 
+// IsConnected returns whether the consumer is connected to Kafka
+func (c *Consumer) IsConnected() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.connected
+}
+
+// setConnected updates connection status
+func (c *Consumer) setConnected(status bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.connected = status
+}
 func (c *Consumer) Close() error {
+
 	return c.client.Close()
 
 }
@@ -116,13 +135,24 @@ type consumerGroupHandler struct {
 }
 
 // Setup is called a t the beginniong of a new session
+
 func (h *consumerGroupHandler) Setup(session sarama.ConsumerGroupSession) error {
-	logger.Log.Info("Consumer session started", zap.Any("Claims", session.Claims()))
+	h.consumer.setConnected(true)
+	logger.Log.Info("Consumer session started", zap.Int32s("partitions", getPartitions(session.Claims())))
 	return nil
+}
+
+func getPartitions(claims map[string][]int32) []int32 {
+	var partitions []int32
+	for _, parts := range claims {
+		partitions = append(partitions, parts...)
+	}
+	return partitions
 }
 
 // Cleanup is called at the end of session
 func (h *consumerGroupHandler) Cleanup(session sarama.ConsumerGroupSession) error {
+	h.consumer.setConnected(false)
 	logger.Log.Info("Consumer session ended")
 	return nil
 }
