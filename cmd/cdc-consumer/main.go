@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,6 +13,7 @@ import (
 	//"github.com/IBM/sarama"
 	"github.com/sparkiss/pos-cdc/internal/config"
 	"github.com/sparkiss/pos-cdc/internal/consumer"
+	"github.com/sparkiss/pos-cdc/internal/health"
 	"github.com/sparkiss/pos-cdc/internal/models"
 	"github.com/sparkiss/pos-cdc/internal/pool"
 	"github.com/sparkiss/pos-cdc/internal/processor"
@@ -39,14 +41,26 @@ func main() {
 		zap.String("source_tz", cfg.SourceTimezone),
 		zap.String("target_tz", cfg.TargetTimezone))
 
+	healthServer := health.New(cfg.HealthPort)
+
+	go func() {
+		if err := healthServer.Start(); err != nil && err != http.ErrServerClosed {
+			logger.Log.Error("Health server error", zap.Error(err))
+		}
+	}()
+
 	mysqlWriter, err := writer.New(cfg)
 	if err != nil {
 		logger.Log.Fatal("Failed to connect to MySQL: %v", zap.Error(err))
 	}
 	defer mysqlWriter.Close()
 
-	schemaCache := schema.New(mysqlWriter.DB(), cfg.TargetDB.Database)
+	healthServer.UpdateCheck("mysql", health.CheckResult{
+		Healthy: true,
+		Message: "Connected",
+	})
 
+	schemaCache := schema.New(mysqlWriter.DB(), cfg.TargetDB.Database)
 	proc := processor.New(schemaCache, cfg.SourceLocation, cfg.TargetLocation)
 
 	// Create worker pool
@@ -62,15 +76,19 @@ func main() {
 		workerPool.Submit(event)
 		return nil
 	}
+
 	kafkaConsumer, err := consumer.New(cfg, handler)
 	if err != nil {
 		logger.Log.Fatal("Failed to create consumer", zap.Error(err))
 	}
 	defer kafkaConsumer.Close()
 
-	// Handle shutdown signals (Ctrl+C)
-	sigterm := make(chan os.Signal, 1)
-	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
+	healthServer.UpdateCheck("kafka", health.CheckResult{
+		Healthy: true,
+		Message: "Connected",
+	})
+
+	healthServer.SetReady(true)
 
 	// Start consumer in Background
 	go func() {
@@ -81,8 +99,11 @@ func main() {
 
 	logger.Log.Info("CDCConsuemr running. Press Ctrl+C to stop")
 
-	// Wait for shutdown signal
+	// Handle shutdown signals (Ctrl+C)
+	sigterm := make(chan os.Signal, 1)
+	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
 	<-sigterm
+
 	logger.Log.Info("Shutdown signal received")
 
 	// Cancel context to stop consumer
@@ -90,6 +111,11 @@ func main() {
 
 	// Stop worker pool (drain queue and wait for workers)
 	workerPool.Stop()
+
+	// Stop health server
+	if err := healthServer.Stop(); err != nil {
+		logger.Log.Error("Health server shutdown error", zap.Error(err))
+	}
 
 	logger.Log.Info("CDC Consumer stopped")
 }
