@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -88,29 +90,84 @@ func main() {
 		Message: "Connected",
 	})
 
+	/*
+		healthServer.SetReady(true)
+		// Start consumer in Background
+		go func() {
+			if err := kafkaConsumer.Start(ctx); err != nil {
+				logger.Log.Error("Consumer stopped", zap.Error(err))
+			}
+		}()
+
+		logger.Log.Info("CDCConsuemr running. Press Ctrl+C to stop")
+
+		// Handle shutdown signals (Ctrl+C)
+		sigterm := make(chan os.Signal, 1)
+		signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
+		<-sigterm
+
+		logger.Log.Info("Shutdown signal received")
+
+		// Cancel context to stop consumer
+		cancel()
+
+		// Stop worker pool (drain queue and wait for workers)
+		workerPool.Stop()
+
+		// Stop health server
+		if err := healthServer.Stop(); err != nil {
+			logger.Log.Error("Health server shutdown error", zap.Error(err))
+		}
+
+		logger.Log.Info("CDC Consumer stopped")
+	*/
+
+	// Mark as ready
 	healthServer.SetReady(true)
 
-	// Start consumer in Background
-	go func() {
-		if err := kafkaConsumer.Start(ctx); err != nil {
-			logger.Log.Error("Consumer stopped", zap.Error(err))
+	// Context for graceful shutdown
+	//ctx, cancel := context.WithCancel(context.Background())
+
+	// WaitGroup for clean shutdown
+	var wg sync.WaitGroup
+
+	// Start consumer
+	wg.Go(func() {
+		if err := kafkaConsumer.Start(ctx); err != nil && err != context.Canceled {
+			logger.Log.Error("Consumer error", zap.Error(err))
 		}
-	}()
+	})
 
-	logger.Log.Info("CDCConsuemr running. Press Ctrl+C to stop")
+	logger.Log.Info("CDC Consumer running",
+		zap.Int("health_port", cfg.HealthPort),
+		zap.Int("metrics_port", cfg.MetricsPort))
 
-	// Handle shutdown signals (Ctrl+C)
+	// Wait for shutdown signal
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
 	<-sigterm
 
-	logger.Log.Info("Shutdown signal received")
+	logger.Log.Info("Shutdown signal received, draining...")
 
-	// Cancel context to stop consumer
+	// Mark as not ready (stop accepting new work)
+	healthServer.SetReady(false)
+
+	// Cancel context (tells consumer to stop)
 	cancel()
 
-	// Stop worker pool (drain queue and wait for workers)
-	workerPool.Stop()
+	// Wait for consumer to finish with timeout
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		logger.Log.Info("Consumer stopped gracefully")
+	case <-time.After(30 * time.Second):
+		logger.Log.Warn("Shutdown timeout, forcing exit")
+	}
 
 	// Stop health server
 	if err := healthServer.Stop(); err != nil {
@@ -118,4 +175,5 @@ func main() {
 	}
 
 	logger.Log.Info("CDC Consumer stopped")
+
 }
