@@ -10,6 +10,9 @@ type CDCEvent struct {
 	SourceTable string `json:"__source_table"`
 	Deleted     string `json:"__deleted"`
 
+	Topic     string `json:"-"`
+	Partition int32  `json:"-"`
+
 	Payload map[string]any `json:"-"`
 }
 
