@@ -1,0 +1,9 @@
+# .dockerignore
+.git
+.env
+.env.*
+*.md
+Dockerfile
+docker-compose*.yml
+bin/
+vendor/

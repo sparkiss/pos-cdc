@@ -1,36 +1,68 @@
-  services:
-    mysql-target:
-      volumes:
-        - ./../../configs:/docker-entrypoint-initdb.d:ro
+# Development environment overrides
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#        or  COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml in .env 
 
-    redpanda:
-      # Smaller resource usage for dev
-      command:
-        - redpanda
-        - start
-        - --smp
-        - "1"
-        - --reserve-memory
-        - "0M"
-        - --overprovisioned
-        - --node-id
-        - "0"
-        - --kafka-addr
-        - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
-        - --advertise-kafka-addr
-        - PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
-        - --pandaproxy-addr
-        - PLAINTEXT://0.0.0.0:8082
-        - --advertise-pandaproxy-addr
-        - PLAINTEXT://redpanda:8082
-        - --rpc-addr
-        - 0.0.0.0:33145
-        - --advertise-rpc-addr
-        - redpanda:33145
-        - --set
-        - redpanda.developer_mode=true
+services:
+  # Target MySQL 8 (only for dev/staging - production uses external DB)
+  mysql-target:
+    image: mysql:8.0
+    container_name: mysql-target
+    restart: unless-stopped
+    networks:
+      - cdc-network
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${TARGET_DB_PASSWORD}
+      MYSQL_DATABASE: ${TARGET_DB_NAME}
+      MYSQL_USER: ${TARGET_DB_USER}
+      MYSQL_PASSWORD: ${TARGET_DB_PASSWORD}
+    volumes:
+      - mysql-target-data:/var/lib/mysql
+      - ./../../configs:/docker-entrypoint-initdb.d:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=500
+      - --default-authentication-plugin=mysql_native_password
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+        compress: "true"
 
-    debezium:
-      environment:
-        LOG_LEVEL: DEBUG
-        KAFKA_HEAP_OPTS: "-Xms512M -Xmx1G"
+  redpanda:
+    # Smaller resource usage for dev
+    command:
+      - redpanda
+      - start
+      - --smp
+      - "1"
+      - --reserve-memory
+      - "0M"
+      - --overprovisioned
+      - --node-id
+      - "0"
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr
+      - PLAINTEXT://0.0.0.0:8082
+      - --advertise-pandaproxy-addr
+      - PLAINTEXT://redpanda:8082
+      - --rpc-addr
+      - 0.0.0.0:33145
+      - --advertise-rpc-addr
+      - redpanda:33145
+      - --set
+      - redpanda.developer_mode=true
+
+  debezium:
+    environment:
+      LOG_LEVEL: DEBUG
+      KAFKA_HEAP_OPTS: "-Xms512M -Xmx1G"
+
+volumes:
+  mysql-target-data:
