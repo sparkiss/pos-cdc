@@ -1,5 +1,7 @@
+# deployments/docker/docker-compose.yml
+# Base configuration - shared across all environments
+
 services:
-  # Redpanda (Kafka-compatible message broker)
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v25.2.11
     container_name: redpanda
@@ -53,11 +55,7 @@ services:
       CONNECT_ENABLED: "true"
       CONNECT_CLUSTERS_0_NAME: debezium-cluster
       CONNECT_CLUSTERS_0_URL: http://debezium:8083
-      # Disable authentication completely
       LOGIN_ENABLED: "false"
-      LOGIN_USE_OIDC: "false"
-      LOGIN_JWT_ENABLED: "false"
-
     depends_on:
       - redpanda
     logging:
@@ -95,7 +93,7 @@ services:
         max-file: "5"
         compress: "true"
 
-  # Kafka Connect UI (for managing Debezium connectors)
+  # Kafka Connect UI
   connect-ui:
     image: landoop/kafka-connect-ui:latest
     container_name: connect-ui

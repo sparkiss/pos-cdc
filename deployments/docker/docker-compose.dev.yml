@@ -1,9 +1,8 @@
-# Development environment overrides
-# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-#        or  COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml in .env 
+# deployments/docker/docker-compose.dev.yml
+# Development environment - adds mysql-target container
 
 services:
-  # Target MySQL 8 (only for dev/staging - production uses external DB)
+  # Target MySQL 8 (Docker container for dev)
   mysql-target:
     image: mysql:8.0
     container_name: mysql-target
@@ -33,7 +32,7 @@ services:
         compress: "true"
 
   redpanda:
-    # Smaller resource usage for dev
+    # Dev-specific: enable developer mode
     command:
       - redpanda
       - start
