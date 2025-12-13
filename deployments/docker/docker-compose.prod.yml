@@ -3,7 +3,7 @@
 
 services:
   cdc-consumer:
-    image: pos-cdc-consumer:latest
+    image: ghcr.io/sparkiss/pos-cdc-consumer:latest
     container_name: cdc-consumer
     restart: always
     networks:
