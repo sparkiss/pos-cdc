@@ -39,7 +39,11 @@ pipeline {
 
         stage('Tag Latest') {
             when {
-                branch 'main'
+                anyOf {
+                    branch 'main'
+                    expression { env.GIT_BRANCH == 'origin/main' }
+                    expression { env.GIT_BRANCH == 'main' }
+                }
             }
             steps {
                 sh """
@@ -50,7 +54,11 @@ pipeline {
 
         stage('Push to ghcr.io') {
             when {
-                branch 'main'
+                anyOf {
+                    branch 'main'
+                    expression { env.GIT_BRANCH == 'origin/main' }
+                    expression { env.GIT_BRANCH == 'main' }
+                }
             }
             steps {
                 withCredentials([usernamePassword(
