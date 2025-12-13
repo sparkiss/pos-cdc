@@ -183,7 +183,7 @@ func TestServer_HandleReady_WithChecks(t *testing.T) {
 	s.handleReady(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Parse response
 	var response map[string]any

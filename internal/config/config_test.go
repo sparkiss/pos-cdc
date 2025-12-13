@@ -285,7 +285,7 @@ func TestLoad_ValidationErrors(t *testing.T) {
 	defer os.Setenv("TARGET_DB_PASSWORD", originalPassword) //nolint:errcheck
 
 	// Test missing required field
-	os.Unsetenv("TARGET_DB_PASSWORD")
+	os.Unsetenv("TARGET_DB_PASSWORD") //nolint:errcheck
 	_, err := Load()
 	if err == nil {
 		t.Error("Load() should return error when TARGET_DB_PASSWORD is missing")
@@ -298,16 +298,16 @@ func TestLoad_InvalidTimezone(t *testing.T) {
 	originalSourceTZ := os.Getenv("SOURCE_DB_TIMEZONE")
 
 	defer func() {
-		os.Setenv("TARGET_DB_PASSWORD", originalPassword)
+		os.Setenv("TARGET_DB_PASSWORD", originalPassword)             //nolint:errcheck
 		if originalSourceTZ != "" {
-			os.Setenv("SOURCE_DB_TIMEZONE", originalSourceTZ)
+			os.Setenv("SOURCE_DB_TIMEZONE", originalSourceTZ)         //nolint:errcheck
 		} else {
-			os.Unsetenv("SOURCE_DB_TIMEZONE")
+			os.Unsetenv("SOURCE_DB_TIMEZONE")                         //nolint:errcheck
 		}
 	}()
 
-	os.Setenv("TARGET_DB_PASSWORD", "test_password")
-	os.Setenv("SOURCE_DB_TIMEZONE", "Invalid/Timezone")
+	os.Setenv("TARGET_DB_PASSWORD", "test_password")   //nolint:errcheck
+	os.Setenv("SOURCE_DB_TIMEZONE", "Invalid/Timezone") //nolint:errcheck
 
 	_, err := Load()
 	if err == nil {
@@ -336,22 +336,22 @@ func TestLoad_ValidConfig(t *testing.T) {
 	defer func() {
 		for key, value := range originalValues {
 			if value != "" {
-				os.Setenv(key, value)
+				os.Setenv(key, value)   //nolint:errcheck
 			} else {
-				os.Unsetenv(key)
+				os.Unsetenv(key)        //nolint:errcheck
 			}
 		}
 	}()
 
 	// Set test values
-	os.Setenv("TARGET_DB_PASSWORD", "test_password")
-	os.Setenv("TARGET_DB_HOST", "testhost")
-	os.Setenv("TARGET_DB_PORT", "3308")
-	os.Setenv("KAFKA_BROKERS", "broker1:9092,broker2:9092")
-	os.Setenv("WORKER_COUNT", "8")
-	os.Setenv("EXCLUDED_TABLES", "logs,sessions")
-	os.Setenv("SOURCE_DB_TIMEZONE", "America/Denver")
-	os.Setenv("TARGET_DB_TIMEZONE", "UTC")
+	t.Setenv("TARGET_DB_PASSWORD", "test_password")
+	t.Setenv("TARGET_DB_HOST", "testhost")
+	t.Setenv("TARGET_DB_PORT", "3308")
+	t.Setenv("KAFKA_BROKERS", "broker1:9092,broker2:9092")
+	t.Setenv("WORKER_COUNT", "8")
+	t.Setenv("EXCLUDED_TABLES", "logs,sessions")
+	t.Setenv("SOURCE_DB_TIMEZONE", "America/Denver")
+	t.Setenv("TARGET_DB_TIMEZONE", "UTC")
 
 	cfg, err := Load()
 	if err != nil {
