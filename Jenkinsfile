@@ -18,7 +18,7 @@ pipeline {
             agent {
                 docker {
                     image "golang:${GO_VERSION}"
-                    args '-v /tmp/go-cache:/go/pkg'  // Cache modules between builds
+                    args '-v /tmp/go-cache:/go/pkg -u root:root'  // Cache modules, run as root
                 }
             }
             steps {
@@ -49,6 +49,7 @@ pipeline {
             agent {
                 docker {
                     image "golang:${GO_VERSION}"
+                    args '-u root:root'
                 }
             }
             steps {
