@@ -15,7 +15,6 @@ pipeline {
                     message: "🚀 CI Started: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
                 )
                 checkout scm
-                stash name: 'source', includes: '**'
             }
         }
 
@@ -23,11 +22,11 @@ pipeline {
             agent {
                 docker {
                     image "golang:${GO_VERSION}"
-                    args '-v /tmp/go-cache:/go/pkg -u root:root'  // Cache modules, run as root
+                    args '-u root:root'
                 }
             }
             steps {
-                unstash 'source'
+                checkout scm
                 sh 'go mod download'
                 sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...'
             }
@@ -46,7 +45,7 @@ pipeline {
                 }
             }
             steps {
-                unstash 'source'
+                checkout scm
                 sh 'golangci-lint run --timeout=5m'
             }
         }
@@ -59,7 +58,7 @@ pipeline {
                 }
             }
             steps {
-                unstash 'source'
+                checkout scm
                 sh '''
                     go install github.com/securego/gosec/v2/cmd/gosec@latest
                     gosec ./...
