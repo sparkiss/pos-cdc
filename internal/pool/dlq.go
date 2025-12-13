@@ -92,6 +92,6 @@ func (d *DLQ) Count() int {
 // Close closes the DLQ file
 func (d *DLQ) Close() {
 	if d.file != nil {
-		d.file.Close()
+		_ = d.file.Close()
 	}
 }

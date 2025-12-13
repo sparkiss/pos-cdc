@@ -55,7 +55,7 @@ func main() {
 	if err != nil {
 		logger.Log.Fatal("Failed to connect to MySQL: %v", zap.Error(err))
 	}
-	defer mysqlWriter.Close()
+	defer func() { _ = mysqlWriter.Close() }()
 
 	healthServer.UpdateCheck("mysql", health.CheckResult{
 		Healthy: true,
@@ -83,7 +83,7 @@ func main() {
 	if err != nil {
 		logger.Log.Fatal("Failed to create consumer", zap.Error(err))
 	}
-	defer kafkaConsumer.Close()
+	defer func() { _ = kafkaConsumer.Close() }()
 
 	healthServer.UpdateCheck("kafka", health.CheckResult{
 		Healthy: true,

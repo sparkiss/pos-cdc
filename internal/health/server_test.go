@@ -83,7 +83,7 @@ func TestServer_HandleHealth(t *testing.T) {
 	s.handleHealth(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Should always return 200 OK
 	if resp.StatusCode != http.StatusOK {
@@ -117,7 +117,7 @@ func TestServer_HandleReady_NotReady(t *testing.T) {
 	s.handleReady(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Should return 503 Service Unavailable when not ready
 	if resp.StatusCode != http.StatusServiceUnavailable {
@@ -145,7 +145,7 @@ func TestServer_HandleReady_Ready(t *testing.T) {
 	s.handleReady(w, req)
 
 	resp := w.Result()
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 
 	// Should return 200 OK when ready
 	if resp.StatusCode != http.StatusOK {

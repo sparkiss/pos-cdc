@@ -90,7 +90,7 @@ func (c *Consumer) getTopics() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer admin.Close()
+	defer func() { _ = admin.Close() }()
 
 	allTopics, err := admin.ListTopics()
 	if err != nil {

@@ -82,7 +82,7 @@ func (s *SchemaCache) queryTableSchema(table string) (*TableSchema, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query columns: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var col ColumnInfo
@@ -109,7 +109,7 @@ func (s *SchemaCache) queryTableSchema(table string) (*TableSchema, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query primary keys: %w", err)
 	}
-	defer pkRows.Close()
+	defer func() { _ = pkRows.Close() }()
 
 	for pkRows.Next() {
 		var pkCol string

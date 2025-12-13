@@ -43,11 +43,11 @@ func TestGetEnv(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clean up before and after test
-			os.Unsetenv(tt.key)
-			defer os.Unsetenv(tt.key)
+			os.Unsetenv(tt.key)        //nolint:errcheck
+			defer os.Unsetenv(tt.key)  //nolint:errcheck
 
 			if tt.setEnv {
-				os.Setenv(tt.key, tt.envValue)
+				os.Setenv(tt.key, tt.envValue) //nolint:errcheck
 			}
 
 			if got := getEnv(tt.key, tt.defaultValue); got != tt.want {
@@ -117,11 +117,11 @@ func TestGetEnvInt(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Unsetenv(tt.key)
-			defer os.Unsetenv(tt.key)
+			os.Unsetenv(tt.key)        //nolint:errcheck
+			defer os.Unsetenv(tt.key)  //nolint:errcheck
 
 			if tt.setEnv {
-				os.Setenv(tt.key, tt.envValue)
+				os.Setenv(tt.key, tt.envValue) //nolint:errcheck
 			}
 
 			if got := getEnvInt(tt.key, tt.defaultValue); got != tt.want {
@@ -282,7 +282,7 @@ func TestConfig_TargetDSN_SpecialCharacters(t *testing.T) {
 func TestLoad_ValidationErrors(t *testing.T) {
 	// Save original env vars
 	originalPassword := os.Getenv("TARGET_DB_PASSWORD")
-	defer os.Setenv("TARGET_DB_PASSWORD", originalPassword)
+	defer os.Setenv("TARGET_DB_PASSWORD", originalPassword) //nolint:errcheck
 
 	// Test missing required field
 	os.Unsetenv("TARGET_DB_PASSWORD")
