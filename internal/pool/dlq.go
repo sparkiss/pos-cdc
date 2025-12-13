@@ -30,18 +30,18 @@ type DLQ struct {
 
 // NewDLQ creates a new DLQ
 func NewDLQ() *DLQ {
-	// DLQ file path in var/dlq/ directory
+	// DLQ file path in var/dlq/ directory (hardcoded, not user input)
 	dlqPath := filepath.Join("var", "dlq", "dlq.jsonl")
 
 	// Create directory if it doesn't exist
-	if err := os.MkdirAll(filepath.Dir(dlqPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dlqPath), 0750); err != nil {
 		logger.Log.Warn("Failed to create DLQ directory",
 			zap.String("path", filepath.Dir(dlqPath)),
 			zap.Error(err))
 	}
 
 	// Open DLQ file for appending
-	file, err := os.OpenFile(dlqPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(dlqPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600) // #nosec G304 - path is hardcoded
 	if err != nil {
 		logger.Log.Warn("Failed to open DLQ file, using memory only",
 			zap.String("path", dlqPath),

@@ -82,9 +82,8 @@ func (wp *WorkerPool) Submit(event *models.CDCEvent) {
 
 func fnv32(key string) uint32 {
 	h := fnv.New32a()
-	h.Write([]byte(key))
+	_, _ = h.Write([]byte(key)) // hash.Write never returns an error
 	return h.Sum32()
-
 }
 
 func (wp *WorkerPool) Stop() {

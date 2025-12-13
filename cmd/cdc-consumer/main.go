@@ -169,6 +169,9 @@ func main() {
 		logger.Log.Warn("Shutdown timeout, forcing exit")
 	}
 
+	// Stop worker pool (drain queues and wait for workers)
+	workerPool.Stop()
+
 	// Stop health server
 	if err := healthServer.Stop(); err != nil {
 		logger.Log.Error("Health server shutdown error", zap.Error(err))
