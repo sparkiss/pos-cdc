@@ -9,6 +9,11 @@ pipeline {
         stage('Checkout') {
             agent any
             steps {
+                zulipSend(
+                    stream: 'pos-cdc-ci',
+                    topic: 'pos-cdc',
+                    message: "🚀 CI Started: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                )
                 checkout scm
                 stash name: 'source', includes: '**'
             }
@@ -37,6 +42,7 @@ pipeline {
             agent {
                 docker {
                     image 'golangci/golangci-lint:latest'
+                    args '-u root:root'
                 }
             }
             steps {

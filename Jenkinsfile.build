@@ -11,6 +11,11 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                zulipSend(
+                    stream: 'pos-cdc-build',
+                    topic: 'pos-cdc',
+                    message: "🚀 Build Started: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                )
                 checkout scm
             }
         }
