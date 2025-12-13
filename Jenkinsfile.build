@@ -79,7 +79,7 @@ pipeline {
             zulipSend(
                 stream: 'Jenkins',
                 topic: 'pos-cdc',
-                message: "✅ BUILD PASSED ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                message: "✅ BUILD PASSED ${env.JOB_NAME} #${env.BUILD_NUMBER}\nYou can deploy now."
             )
         }
         failure {
