@@ -1,0 +1,75 @@
+pipeline {
+    agent any
+
+    environment {
+        REGISTRY = 'ghcr.io'
+        GITHUB_USER = 'sparkiss'
+        IMAGE_NAME = "${REGISTRY}/${GITHUB_USER}/pos-cdc-consumer"
+        IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT?.take(7) ?: 'latest'}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    docker.build("${IMAGE_NAME}:${IMAGE_TAG}")
+                }
+            }
+        }
+
+        stage('Test Docker Image') {
+            steps {
+                sh '''
+                    # Verify binary exists in image
+                    docker run --rm --entrypoint ls ${IMAGE_NAME}:${IMAGE_TAG} -la /app/
+                '''
+            }
+        }
+
+        stage('Tag Latest') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sh """
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+                """
+            }
+        }
+
+        stage('Push to ghcr.io') {
+            when {
+                branch 'main'
+            }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'ghcr-credentials',
+                    usernameVariable: 'GITHUB_USER',
+                    passwordVariable: 'GITHUB_TOKEN'
+                )]) {
+                    sh '''
+                        echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_USER" --password-stdin
+                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${IMAGE_NAME}:latest
+                        docker logout ghcr.io
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Clean up local images
+            sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+            cleanWs()
+        }
+    }
+}
+

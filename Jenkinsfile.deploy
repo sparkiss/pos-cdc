@@ -1,0 +1,131 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['staging', 'production'],
+            description: 'Select deployment environment'
+        )
+        string(
+            name: 'IMAGE_TAG',
+            defaultValue: 'latest',
+            description: 'Docker image tag to deploy'
+        )
+    }
+
+    environment {
+        IMAGE_NAME = 'pos-cdc-consumer'
+    }
+
+    stages {
+        stage('Validate') {
+            steps {
+                script {
+                    if (params.ENVIRONMENT == 'production') {
+                        input message: 'Deploy to PRODUCTION?', ok: 'Deploy'
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Server') {
+            steps {
+                sshagent(['production-server-ssh-key']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'ENDSSH'
+                            cd /opt/pos-cdc
+
+                            # Pull latest code
+                            git pull origin main
+
+                            # Pull latest Docker image
+                            docker pull ${IMAGE_NAME}:${params.IMAGE_TAG}
+
+                            # Navigate to docker directory
+                            cd deployments/docker
+
+                            # Restart CDC consumer only
+                            docker compose up -d --no-deps cdc-consumer
+
+                            # Wait for health check
+                            sleep 30
+
+                            # Verify deployment
+                            docker compose ps
+                            curl -f http://localhost:8081/health || exit 1
+
+                            echo "Deployment successful!"
+ENDSSH
+                    """
+                }
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                script {
+                    def healthy = false
+                    for (int i = 0; i < 10; i++) {
+                        try {
+                            sshagent(['production-server-ssh-key']) {
+                                sh """
+                                    ssh ${DEPLOY_USER}@${DEPLOY_HOST} 'curl -f http://localhost:8081/health'
+                                """
+                            }
+                            healthy = true
+                            break
+                        } catch (Exception e) {
+                            echo "Health check attempt ${i + 1} failed, retrying..."
+                            sleep 10
+                        }
+                    }
+                    if (!healthy) {
+                        error "Health check failed after 10 attempts"
+                    }
+                }
+            }
+        }
+
+        stage('Rollback on Failure') {
+            when {
+                expression { currentBuild.result == 'FAILURE' }
+            }
+            steps {
+                sshagent(['production-server-ssh-key']) {
+                    sh """
+                        ssh ${DEPLOY_USER}@${DEPLOY_HOST} << 'ENDSSH'
+                            cd /opt/pos-cdc/deployments/docker
+
+                            # Rollback to previous image
+                            docker compose down cdc-consumer
+                            docker pull ${IMAGE_NAME}:previous
+                            docker tag ${IMAGE_NAME}:previous ${IMAGE_NAME}:latest
+                            docker compose up -d cdc-consumer
+
+                            echo "Rollback completed"
+ENDSSH
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            zulipNotification(
+                    stream: 'pos-cdc-deployment',
+                    topic: 'pos-cdc',
+                    message: "✅ DEPLOYED to ${ENVIRONMENT}"
+                    )
+        }
+        failure {
+            zulipNotification(
+                    stream: 'pos-cdc-deployment',
+                    message: "❌ DEPLOYMENT FAILED: ${ENVIRONMENT}"
+                    topic: 'pos-cdc',
+                    )
+        }
+    }
+}
+
