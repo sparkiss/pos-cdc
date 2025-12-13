@@ -65,6 +65,7 @@ func (w *MySQLWriter) ExecuteBatch(queries []Query) error {
 	var err error
 	for attempt := 0; attempt <= w.maxRetries; attempt++ {
 		if attempt > 0 {
+			// #nosec G115 - attempt is bounded by maxRetries (typically < 10), no overflow risk
 			backoff := time.Duration(w.backoffMS*(1<<uint(attempt-1))) * time.Millisecond
 			logger.Log.Warn("Retrying batch after error",
 				zap.Int("attempt", attempt),
