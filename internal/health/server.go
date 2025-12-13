@@ -86,7 +86,7 @@ func (s *Server) UpdateCheck(name string, result CheckResult) {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	// Liveness: just return OK if process is running
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
@@ -104,5 +104,5 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }

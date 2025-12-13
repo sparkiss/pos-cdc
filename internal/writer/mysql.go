@@ -114,7 +114,7 @@ func (w *MySQLWriter) executeBatchOnce(queries []Query) error {
 	for i, q := range queries {
 		_, err := tx.Exec(q.SQL, q.Args...)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			logger.Log.Error("Batch query failed",
 				zap.Int("index", i),
 				zap.String("table", q.Table),

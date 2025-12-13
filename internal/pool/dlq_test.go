@@ -16,17 +16,23 @@ import (
 // TestMain sets up the logger for all tests in this package
 func TestMain(m *testing.M) {
 	// Initialize logger to avoid nil pointer
-	logger.Init("error", "text")
+	_ = logger.Init("error", "text")
 	os.Exit(m.Run())
+}
+
+// setupTestDir changes to a temp directory and returns the temp path and cleanup function
+func setupTestDir(t *testing.T) (string, func()) {
+	t.Helper()
+	origDir, _ := os.Getwd()
+	tempDir := t.TempDir()
+	_ = os.Chdir(tempDir)
+	return tempDir, func() { _ = os.Chdir(origDir) }
 }
 
 // TestDLQ_NewDLQ tests DLQ creation
 func TestDLQ_NewDLQ(t *testing.T) {
-	// Save current directory and change to temp
-	origDir, _ := os.Getwd()
-	tempDir := t.TempDir()
-	os.Chdir(tempDir)
-	defer os.Chdir(origDir)
+	tempDir, cleanup := setupTestDir(t)
+	defer cleanup()
 
 	dlq := NewDLQ()
 	defer dlq.Close()
@@ -49,11 +55,8 @@ func TestDLQ_NewDLQ(t *testing.T) {
 
 // TestDLQ_Send tests adding events to DLQ
 func TestDLQ_Send(t *testing.T) {
-	// Save current directory and change to temp
-	origDir, _ := os.Getwd()
-	tempDir := t.TempDir()
-	os.Chdir(tempDir)
-	defer os.Chdir(origDir)
+	_, cleanup := setupTestDir(t)
+	defer cleanup()
 
 	dlq := NewDLQ()
 	defer dlq.Close()
@@ -99,10 +102,8 @@ func TestDLQ_Send(t *testing.T) {
 
 // TestDLQ_Send_MultipleEvents tests adding multiple events
 func TestDLQ_Send_MultipleEvents(t *testing.T) {
-	origDir, _ := os.Getwd()
-	tempDir := t.TempDir()
-	os.Chdir(tempDir)
-	defer os.Chdir(origDir)
+	_, cleanup := setupTestDir(t)
+	defer cleanup()
 
 	dlq := NewDLQ()
 	defer dlq.Close()
@@ -122,10 +123,8 @@ func TestDLQ_Send_MultipleEvents(t *testing.T) {
 
 // TestDLQ_Send_Concurrent tests thread safety
 func TestDLQ_Send_Concurrent(t *testing.T) {
-	origDir, _ := os.Getwd()
-	tempDir := t.TempDir()
-	os.Chdir(tempDir)
-	defer os.Chdir(origDir)
+	_, cleanup := setupTestDir(t)
+	defer cleanup()
 
 	dlq := NewDLQ()
 	defer dlq.Close()
@@ -158,10 +157,8 @@ func TestDLQ_Send_Concurrent(t *testing.T) {
 
 // TestDLQ_FileWritten tests that events are persisted to file
 func TestDLQ_FileWritten(t *testing.T) {
-	origDir, _ := os.Getwd()
-	tempDir := t.TempDir()
-	os.Chdir(tempDir)
-	defer os.Chdir(origDir)
+	tempDir, cleanup := setupTestDir(t)
+	defer cleanup()
 
 	dlq := NewDLQ()
 
@@ -205,10 +202,8 @@ func TestDLQ_FileWritten(t *testing.T) {
 
 // TestDLQ_Close tests closing the DLQ
 func TestDLQ_Close(t *testing.T) {
-	origDir, _ := os.Getwd()
-	tempDir := t.TempDir()
-	os.Chdir(tempDir)
-	defer os.Chdir(origDir)
+	_, cleanup := setupTestDir(t)
+	defer cleanup()
 
 	dlq := NewDLQ()
 
