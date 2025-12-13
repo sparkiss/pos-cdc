@@ -12,9 +12,9 @@ pipeline {
         stage('Checkout') {
             steps {
                 zulipSend(
-                    stream: 'pos-cdc-build',
+                    stream: 'Jenkins',
                     topic: 'pos-cdc',
-                    message: "🚀 Build Started: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                    message: "🚀 Build Started to ${params.ENVIRONMENT}: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
                 )
                 checkout scm
             }
@@ -77,14 +77,14 @@ pipeline {
         }
         success {
             zulipSend(
-                stream: 'pos-cdc-build',
+                stream: 'Jenkins',
                 topic: 'pos-cdc',
                 message: "✅ BUILD PASSED ${env.JOB_NAME} #${env.BUILD_NUMBER}"
             )
         }
         failure {
             zulipSend(
-                stream: 'pos-cdc-build',
+                stream: 'Jenkins',
                 topic: 'pos-cdc',
                 message: "❌ BUILD FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
             )

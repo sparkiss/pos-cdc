@@ -10,9 +10,9 @@ pipeline {
             agent any
             steps {
                 zulipSend(
-                    stream: 'pos-cdc-ci',
+                    stream: 'Jenkins',
                     topic: 'pos-cdc',
-                    message: "🚀 CI Started: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                    message: "🚀 CI Started to ${params.ENVIRONMENT}: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
                 )
                 checkout scm
             }
@@ -71,9 +71,9 @@ pipeline {
         success {
             node('built-in') {
                 zulipSend(
-                    stream: 'pos-cdc-ci',
+                    stream: 'Jenkins',
                     topic: 'pos-cdc',
-                    message: "✅ CI Passed ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                    message: "✅ CI PASSED ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
                 )
                 build job: 'pos-cdc-build', wait: false
             }
@@ -81,7 +81,7 @@ pipeline {
         failure {
             node('built-in') {
                 zulipSend(
-                    stream: 'pos-cdc-ci',
+                    stream: 'Jenkins',
                     topic: 'pos-cdc',
                     message: "❌ CI FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
                 )

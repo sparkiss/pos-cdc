@@ -24,9 +24,9 @@ pipeline {
         stage('Validate') {
             steps {
                 zulipSend(
-                    stream: 'pos-cdc-deployment',
+                    stream: 'Jenkins',
                     topic: 'pos-cdc',
-                    message: "🚀 Deploy Started to ${params.ENVIRONMENT}: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                    message: "🚀 Deploy Started to ${params.ENVIRONMENT}: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
                 )
                 script {
                     if (params.ENVIRONMENT == 'production') {
@@ -129,14 +129,14 @@ ENDSSH
     post {
         success {
             zulipSend(
-                stream: 'pos-cdc-deployment',
+                stream: 'Jenkins',
                 topic: 'pos-cdc',
                 message: "✅ DEPLOYED to ${params.ENVIRONMENT}: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
             )
         }
         failure {
             zulipSend(
-                stream: 'pos-cdc-deployment',
+                stream: 'Jenkins',
                 topic: 'pos-cdc',
                 message: "❌ DEPLOYMENT FAILED to ${params.ENVIRONMENT}: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
             )
