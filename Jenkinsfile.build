@@ -70,6 +70,20 @@ pipeline {
             sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
             cleanWs()
         }
+        success {
+            zulipSend(
+                    stream: 'pos-cdc-build',
+                    topic: 'pos-cdc',
+                    message: "✅ BUILD PASSED ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                    )
+        }
+        failure {
+            zulipSend(
+                    stream: 'pos-cdc-build',
+                    message: "❌ BUILD FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
+                    topic: 'pos-cdc',
+                    )
+        }
     }
 }
 

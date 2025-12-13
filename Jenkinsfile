@@ -74,7 +74,7 @@ pipeline {
 
     post {
         success {
-            zulipNotification(
+            zulipSend(
                     stream: 'pos-cdc-ci',
                     topic: 'pos-cdc',
                     message: "✅ CI Passed ${env.JOB_NAME} #${env.BUILD_NUMBER}"
@@ -82,7 +82,7 @@ pipeline {
             build job: 'pos-cdc-build', wait: false
         }
         failure {
-            zulipNotification(
+            zulipSend(
                     stream: 'pos-cdc-ci',
                     topic: 'pos-cdc',
                     message: "❌ CI FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
