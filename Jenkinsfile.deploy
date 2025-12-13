@@ -31,16 +31,16 @@ pipeline {
 
         stage('Deploy to Server') {
             steps {
-                sshagent(['production-server-ssh-key']) {
+                sshagent(['cdc-server-ssh-key']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} << 'ENDSSH'
+                        ssh -o StrictHostKeyChecking=no \${DEPLOY_USER}@\${DEPLOY_HOST} << 'ENDSSH'
                             cd /opt/pos-cdc
 
                             # Pull latest code
                             git pull origin main
 
                             # Pull latest Docker image
-                            docker pull ${IMAGE_NAME}:${params.IMAGE_TAG}
+                            docker pull ghcr.io/sparkiss/${IMAGE_NAME}:${params.IMAGE_TAG}
 
                             # Navigate to docker directory
                             cd deployments/docker
@@ -68,9 +68,9 @@ ENDSSH
                     def healthy = false
                     for (int i = 0; i < 10; i++) {
                         try {
-                            sshagent(['production-server-ssh-key']) {
+                            sshagent(['cdc-server-ssh-key']) {
                                 sh """
-                                    ssh ${DEPLOY_USER}@${DEPLOY_HOST} 'curl -f http://localhost:8081/health'
+                                    ssh \${DEPLOY_USER}@\${DEPLOY_HOST} 'curl -f http://localhost:8081/health'
                                 """
                             }
                             healthy = true
@@ -92,15 +92,15 @@ ENDSSH
                 expression { currentBuild.result == 'FAILURE' }
             }
             steps {
-                sshagent(['production-server-ssh-key']) {
+                sshagent(['cdc-server-ssh-key']) {
                     sh """
-                        ssh ${DEPLOY_USER}@${DEPLOY_HOST} << 'ENDSSH'
+                        ssh \${DEPLOY_USER}@\${DEPLOY_HOST} << 'ENDSSH'
                             cd /opt/pos-cdc/deployments/docker
 
                             # Rollback to previous image
                             docker compose down cdc-consumer
-                            docker pull ${IMAGE_NAME}:previous
-                            docker tag ${IMAGE_NAME}:previous ${IMAGE_NAME}:latest
+                            docker pull ghcr.io/sparkiss/${IMAGE_NAME}:previous
+                            docker tag ghcr.io/sparkiss/${IMAGE_NAME}:previous ghcr.io/sparkiss/${IMAGE_NAME}:latest
                             docker compose up -d cdc-consumer
 
                             echo "Rollback completed"
@@ -113,19 +113,18 @@ ENDSSH
 
     post {
         success {
-            zulipNotification(
-                    stream: 'pos-cdc-deployment',
-                    topic: 'pos-cdc',
-                    message: "✅ DEPLOYED to ${ENVIRONMENT}"
-                    )
+            zulipSend(
+                stream: 'pos-cdc-deployment',
+                topic: 'pos-cdc',
+                message: "✅ DEPLOYED to ${params.ENVIRONMENT}: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+            )
         }
         failure {
-            zulipNotification(
-                    stream: 'pos-cdc-deployment',
-                    message: "❌ DEPLOYMENT FAILED: ${ENVIRONMENT}"
-                    topic: 'pos-cdc',
-                    )
+            zulipSend(
+                stream: 'pos-cdc-deployment',
+                topic: 'pos-cdc',
+                message: "❌ DEPLOYMENT FAILED to ${params.ENVIRONMENT}: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
+            )
         }
     }
 }
-
