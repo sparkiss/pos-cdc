@@ -71,8 +71,8 @@ func (d *DLQ) Send(event *models.CDCEvent, err error) {
 	// Persist to file
 	if d.file != nil {
 		if jsonBytes, err := json.Marshal(entry); err == nil {
-			d.file.Write(jsonBytes)
-			d.file.WriteString("\n")
+			_, _ = d.file.Write(jsonBytes)
+			_, _ = d.file.WriteString("\n")
 		}
 	}
 

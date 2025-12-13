@@ -1,13 +1,15 @@
+// Package processor
 package processor
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/sparkiss/pos-cdc/internal/models"
 	"github.com/sparkiss/pos-cdc/internal/schema"
 	"github.com/sparkiss/pos-cdc/pkg/logger"
 	"go.uber.org/zap"
-	"strings"
-	"time"
 )
 
 type Processor struct {

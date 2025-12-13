@@ -14,34 +14,12 @@ import (
 // TestMain sets up the logger for all tests in this package
 func TestMain(m *testing.M) {
 	// Initialize logger to avoid nil pointer
-	logger.Init("error", "text")
+	_ = logger.Init("error", "text")
 	os.Exit(m.Run())
 }
 
-// mockSchemaCache provides a simple mock for testing
-type mockSchemaCache struct {
-	schemas map[string]*schema.TableSchema
-}
-
-func newMockSchemaCache() *mockSchemaCache {
-	return &mockSchemaCache{
-		schemas: make(map[string]*schema.TableSchema),
-	}
-}
-
-func (m *mockSchemaCache) addSchema(tableName string, columns map[string]*schema.ColumnInfo, pks []string) {
-	m.schemas[tableName] = &schema.TableSchema{
-		Name:        tableName,
-		Columns:     columns,
-		PrimaryKeys: pks,
-	}
-}
-
-// Helper to create a test processor with mock schema
-func newTestProcessor(mockCache *mockSchemaCache) *Processor {
-	// Create a SchemaCache-like struct with pre-populated data
-	// We'll need to work around this since Processor expects *schema.SchemaCache
-	// For now, we test the SQL building functions directly using buildInsert, buildUpdate, buildDelete
+// Helper to create a test processor
+func newTestProcessor() *Processor {
 	return &Processor{
 		converter: schema.NewConverter(time.UTC, time.UTC),
 	}
@@ -76,7 +54,7 @@ func createUsersSchema() *schema.TableSchema {
 }
 
 func TestProcessor_BuildInsert(t *testing.T) {
-	p := newTestProcessor(nil)
+	p := newTestProcessor()
 	tableSchema := createOrdersSchema()
 
 	payload := map[string]any{
@@ -117,7 +95,7 @@ func TestProcessor_BuildInsert(t *testing.T) {
 }
 
 func TestProcessor_BuildInsert_SkipsMetaFields(t *testing.T) {
-	p := newTestProcessor(nil)
+	p := newTestProcessor()
 	tableSchema := createOrdersSchema()
 
 	payload := map[string]any{
@@ -148,7 +126,7 @@ func TestProcessor_BuildInsert_SkipsMetaFields(t *testing.T) {
 }
 
 func TestProcessor_BuildUpdate(t *testing.T) {
-	p := newTestProcessor(nil)
+	p := newTestProcessor()
 	tableSchema := createOrdersSchema()
 
 	payload := map[string]any{
@@ -183,7 +161,7 @@ func TestProcessor_BuildUpdate(t *testing.T) {
 }
 
 func TestProcessor_BuildUpdate_CompositePK(t *testing.T) {
-	p := newTestProcessor(nil)
+	p := newTestProcessor()
 	tableSchema := createUsersSchema()
 
 	payload := map[string]any{
@@ -215,7 +193,7 @@ func TestProcessor_BuildUpdate_CompositePK(t *testing.T) {
 }
 
 func TestProcessor_BuildUpdate_NoPrimaryKey(t *testing.T) {
-	p := newTestProcessor(nil)
+	p := newTestProcessor()
 	tableSchema := &schema.TableSchema{
 		Name: "no_pk_table",
 		Columns: map[string]*schema.ColumnInfo{
@@ -235,7 +213,7 @@ func TestProcessor_BuildUpdate_NoPrimaryKey(t *testing.T) {
 }
 
 func TestProcessor_BuildDelete(t *testing.T) {
-	p := newTestProcessor(nil)
+	p := newTestProcessor()
 	tableSchema := createOrdersSchema()
 
 	payload := map[string]any{
@@ -267,7 +245,7 @@ func TestProcessor_BuildDelete(t *testing.T) {
 }
 
 func TestProcessor_BuildDelete_CompositePK(t *testing.T) {
-	p := newTestProcessor(nil)
+	p := newTestProcessor()
 	tableSchema := createUsersSchema()
 
 	payload := map[string]any{
@@ -295,7 +273,7 @@ func TestProcessor_BuildDelete_CompositePK(t *testing.T) {
 }
 
 func TestProcessor_BuildDelete_MissingPK(t *testing.T) {
-	p := newTestProcessor(nil)
+	p := newTestProcessor()
 	tableSchema := createUsersSchema()
 
 	// Missing role_id
@@ -310,7 +288,7 @@ func TestProcessor_BuildDelete_MissingPK(t *testing.T) {
 }
 
 func TestProcessor_ConvertPayload(t *testing.T) {
-	p := newTestProcessor(nil)
+	p := newTestProcessor()
 	tableSchema := createOrdersSchema()
 
 	payload := map[string]any{
@@ -347,7 +325,7 @@ func TestProcessor_ConvertPayload(t *testing.T) {
 }
 
 func TestProcessor_ConvertPayload_UnknownColumn(t *testing.T) {
-	p := newTestProcessor(nil)
+	p := newTestProcessor()
 	tableSchema := createOrdersSchema()
 
 	// Column not in schema
