@@ -21,6 +21,11 @@ pipeline {
     stages {
         stage('Validate') {
             steps {
+                zulipSend(
+                    stream: 'pos-cdc-deployment',
+                    topic: 'pos-cdc',
+                    message: "🚀 Deploy Started to ${params.ENVIRONMENT}: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                )
                 script {
                     if (params.ENVIRONMENT == 'production') {
                         input message: 'Deploy to PRODUCTION?', ok: 'Deploy'
