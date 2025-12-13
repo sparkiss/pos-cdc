@@ -16,6 +16,8 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'pos-cdc-consumer'
+        DEPLOY_USER = 'deployer'    // TODO: Change to your actual username
+        DEPLOY_HOST = '192.168.0.112'       // TODO: Change to your actual server IP/hostname
     }
 
     stages {
@@ -36,33 +38,41 @@ pipeline {
 
         stage('Deploy to Server') {
             steps {
-                sshagent(['cdc-server-ssh-key']) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no \${DEPLOY_USER}@\${DEPLOY_HOST} << 'ENDSSH'
-                            cd /opt/pos-cdc
+                withCredentials([
+                    string(credentialsId: 'target-db-password', variable: 'TARGET_DB_PASSWORD')
+                ]) {
+                    sshagent(['cdc-server-ssh-key']) {
+                        sh """
+                            ssh -o StrictHostKeyChecking=no \${DEPLOY_USER}@\${DEPLOY_HOST} << ENDSSH
+                                cd /opt/pos-cdc
 
-                            # Pull latest code
-                            git pull origin main
+                                # Pull latest code
+                                git pull origin main
 
-                            # Pull latest Docker image
-                            docker pull ghcr.io/sparkiss/${IMAGE_NAME}:${params.IMAGE_TAG}
+                                # Pull latest Docker image
+                                docker pull ghcr.io/sparkiss/${IMAGE_NAME}:${params.IMAGE_TAG}
 
-                            # Navigate to docker directory
-                            cd deployments/docker
+                                # Navigate to docker directory
+                                cd deployments/docker
 
-                            # Restart CDC consumer only
-                            docker compose up -d --no-deps cdc-consumer
+                                # Merge base .env with secrets from Jenkins
+                                cp /opt/pos-cdc/config/.env.${params.ENVIRONMENT} .env
+                                echo "TARGET_DB_PASSWORD=${TARGET_DB_PASSWORD}" >> .env
 
-                            # Wait for health check
-                            sleep 30
+                                # Restart CDC consumer only
+                                docker compose up -d --no-deps cdc-consumer
 
-                            # Verify deployment
-                            docker compose ps
-                            curl -f http://localhost:8081/health || exit 1
+                                # Wait for health check
+                                sleep 30
 
-                            echo "Deployment successful!"
+                                # Verify deployment
+                                docker compose ps
+                                curl -f http://localhost:8081/health || exit 1
+
+                                echo "Deployment successful!"
 ENDSSH
-                    """
+                        """
+                    }
                 }
             }
         }
