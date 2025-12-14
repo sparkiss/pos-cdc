@@ -1,3 +1,5 @@
+version: "2"
+
 linters:
   enable:
     - gosec          # Security scanner (replaces separate gosec stage)
