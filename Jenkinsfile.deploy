@@ -141,6 +141,12 @@ DEBEZIUM_SERVER_ID=${DEBEZIUM_SERVER_ID}
 GRAFANA_PASSWORD=${GRAFANA_PASSWORD}
 ENVEOF
 
+# Create symlink for scripts that expect .env at project root
+ln -sf deployments/docker/.env .env
+
+# Generate Debezium connector config from .env
+./scripts/set-debezium-config.sh
+
 # Login to GitHub Container Registry
 echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
 

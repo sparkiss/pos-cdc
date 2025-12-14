@@ -41,7 +41,8 @@ cp configs/debezium-mysql-connector.json.example \
 sed -i "s/SOURCE_DB_HOST/$SOURCE_DB_HOST/g" \
     configs/debezium-mysql-connector.json
 
-sed -i "s/SOURCE_DB_PORT/$SOURCE_DB_PORT/g" \
+# PORT needs to be an integer (remove quotes around the value)
+sed -i "s/\"SOURCE_DB_PORT\"/$SOURCE_DB_PORT/g" \
     configs/debezium-mysql-connector.json
 
 sed -i "s/SOURCE_DB_USER/$SOURCE_DB_USER/g" \
@@ -50,7 +51,8 @@ sed -i "s/SOURCE_DB_USER/$SOURCE_DB_USER/g" \
 sed -i "s/SOURCE_DB_PASSWORD/$SOURCE_DB_PASSWORD/g" \
     configs/debezium-mysql-connector.json
 
-sed -i "s/DEBEZIUM_SERVER_ID/$DEBEZIUM_SERVER_ID/g" \
+# SERVER_ID needs to be an integer (remove quotes around the value)
+sed -i "s/\"DEBEZIUM_SERVER_ID\"/$DEBEZIUM_SERVER_ID/g" \
     configs/debezium-mysql-connector.json
 
 # Set restrictive permissions
