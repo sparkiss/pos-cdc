@@ -12,7 +12,7 @@ pipeline {
                 zulipSend(
                     stream: 'Jenkins',
                     topic: 'pos-cdc',
-                    message: "🚀 CI Started to ${params.ENVIRONMENT}: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
+                    message: "🚀 CI Started: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
                 )
                 checkout scm
             }
@@ -37,7 +37,7 @@ pipeline {
             }
         }
 
-        stage('Lint') {
+        stage('Lint & Security') {
             agent {
                 docker {
                     image 'golangci/golangci-lint:latest'
@@ -47,22 +47,6 @@ pipeline {
             steps {
                 checkout scm
                 sh 'golangci-lint run --timeout=5m'
-            }
-        }
-
-        stage('Security Scan') {
-            agent {
-                docker {
-                    image "golang:${GO_VERSION}"
-                    args '-u root:root'
-                }
-            }
-            steps {
-                checkout scm
-                sh '''
-                    go install github.com/securego/gosec/v2/cmd/gosec@latest
-                    gosec ./...
-                '''
             }
         }
     }

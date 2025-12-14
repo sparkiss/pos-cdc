@@ -14,7 +14,7 @@ pipeline {
                 zulipSend(
                     stream: 'Jenkins',
                     topic: 'pos-cdc',
-                    message: "🚀 Build Started to ${params.ENVIRONMENT}: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
+                    message: "🚀 Build Started: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
                 )
                 checkout scm
             }

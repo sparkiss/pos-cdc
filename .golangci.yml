@@ -1,0 +1,25 @@
+linters:
+  enable:
+    - gosec          # Security scanner (replaces separate gosec stage)
+    - errcheck       # Check for unchecked errors
+    - govet          # Go vet
+    - staticcheck    # Static analysis
+    - ineffassign    # Detect unused assignments
+    - unused         # Detect unused code
+
+linters-settings:
+  gosec:
+    excludes:
+      - G104  # Audit errors not checked (we use //nolint for intentional cases)
+    config:
+      global:
+        audit: enabled
+
+run:
+  timeout: 5m
+  tests: true
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
