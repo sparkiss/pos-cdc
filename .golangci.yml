@@ -1,6 +1,7 @@
 version: "2"
 
 linters:
+  default: none
   enable:
     - gosec          # Security scanner (replaces separate gosec stage)
     - errcheck       # Check for unchecked errors
@@ -8,21 +9,16 @@ linters:
     - staticcheck    # Static analysis
     - ineffassign    # Detect unused assignments
     - unused         # Detect unused code
-
-linters-settings:
-  gosec:
-    excludes:
-      - G104  # Audit errors not checked (we use //nolint for intentional cases)
+  exclusions:
+    presets:
+      - std-error-handling
+      - common-false-positives
+    rules:
+      # Ignore errcheck and gosec in test files
+      - path: _test\.go$
+        linters:
+          - errcheck
+          - gosec
 
 run:
   timeout: 5m
-
-issues:
-  exclude-dirs:
-    - vendor
-  exclude-rules:
-    # Ignore errcheck and gosec in test files
-    - path: _test\.go
-      linters:
-        - errcheck
-        - gosec
