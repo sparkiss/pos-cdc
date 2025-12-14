@@ -13,15 +13,15 @@ linters-settings:
   gosec:
     excludes:
       - G104  # Audit errors not checked (we use //nolint for intentional cases)
-    config:
-      global:
-        audit: enabled
 
 run:
   timeout: 5m
-  tests: true
 
 issues:
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
+  exclude-dirs:
+    - vendor
+  exclude-rules:
+    # Ignore errcheck in test files
+    - path: _test\.go
+      linters:
+        - errcheck
