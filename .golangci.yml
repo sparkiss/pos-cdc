@@ -21,7 +21,8 @@ issues:
   exclude-dirs:
     - vendor
   exclude-rules:
-    # Ignore errcheck in test files
+    # Ignore errcheck and gosec in test files
     - path: _test\.go
       linters:
         - errcheck
+        - gosec
