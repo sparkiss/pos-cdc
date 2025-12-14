@@ -80,7 +80,7 @@ pipeline {
                     string(credentialsId: 'source-db-password', variable: 'SOURCE_DB_PASSWORD'),
                     string(credentialsId: 'target-db-password', variable: 'TARGET_DB_PASSWORD'),
                     string(credentialsId: 'grafana-password', variable: 'GRAFANA_PASSWORD'),
-                    string(credentialsId: 'ghcr-token', variable: 'GHCR_TOKEN')
+                    usernamePassword(credentialsId: 'ghcr-credentials', usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_TOKEN')
                 ]) {
                     sshagent(['cdc-server-ssh-key']) {
                         sh """
@@ -142,7 +142,7 @@ GRAFANA_PASSWORD=${GRAFANA_PASSWORD}
 ENVEOF
 
 # Login to GitHub Container Registry
-echo "${GHCR_TOKEN}" | docker login ghcr.io -u sparkiss --password-stdin
+echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
 
 # Pull latest Docker image
 docker pull ghcr.io/sparkiss/${IMAGE_NAME}:${IMAGE_TAG}
