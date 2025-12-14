@@ -40,7 +40,7 @@ A Change Data Capture (CDC) pipeline that replicates data from a MySQL 5.7 produ
 ## Prerequisites
 
 - Docker and Docker Compose
-- Go 1.21+ (for local development)
+- Go 1.25+ (for local development)
 - Access to source MySQL with binlog enabled
 - Jenkins (for CI/CD)
 
