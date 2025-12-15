@@ -40,6 +40,7 @@ func main() {
 
 	logger.Log.Info("CDC Consumer starting",
 		zap.String("log_level", cfg.LogLevel),
+		zap.String("target_type", string(cfg.TargetType)),
 		zap.String("source_tz", cfg.SourceTimezone),
 		zap.String("target_tz", cfg.TargetTimezone))
 
@@ -51,22 +52,34 @@ func main() {
 		}
 	}()
 
-	mysqlWriter, err := writer.New(cfg)
-	if err != nil {
-		logger.Log.Fatal("Failed to connect to MySQL: %v", zap.Error(err))
+	// Create database writer based on target type
+	var dbWriter writer.Writer
+	if cfg.TargetType == config.TargetPostgres {
+		dbWriter, err = writer.NewPostgres(cfg)
+		if err != nil {
+			logger.Log.Fatal("Failed to connect to PostgreSQL", zap.Error(err))
+		}
+		healthServer.UpdateCheck("postgres", health.CheckResult{
+			Healthy: true,
+			Message: "Connected",
+		})
+	} else {
+		dbWriter, err = writer.NewMySQL(cfg)
+		if err != nil {
+			logger.Log.Fatal("Failed to connect to MySQL", zap.Error(err))
+		}
+		healthServer.UpdateCheck("mysql", health.CheckResult{
+			Healthy: true,
+			Message: "Connected",
+		})
 	}
-	defer func() { _ = mysqlWriter.Close() }()
+	defer func() { _ = dbWriter.Close() }()
 
-	healthServer.UpdateCheck("mysql", health.CheckResult{
-		Healthy: true,
-		Message: "Connected",
-	})
-
-	schemaCache := schema.New(mysqlWriter.DB(), cfg.TargetDB.Database)
-	proc := processor.New(schemaCache, cfg.SourceLocation, cfg.TargetLocation)
+	schemaCache := schema.New(dbWriter.DB(), cfg.TargetDatabase(), cfg.TargetType)
+	proc := processor.New(schemaCache, cfg.SourceLocation, cfg.TargetLocation, cfg.TargetType)
 
 	// Create worker pool
-	workerPool := pool.New(cfg.WorkerCount, cfg.BatchSize, proc, mysqlWriter)
+	workerPool := pool.New(cfg.WorkerCount, cfg.BatchSize, proc, dbWriter)
 
 	// Create context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())

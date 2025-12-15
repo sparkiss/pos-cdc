@@ -21,7 +21,7 @@ type Worker struct {
 	queue     chan *models.CDCEvent
 	batchSize int
 	processor *processor.Processor
-	writer    *writer.MySQLWriter
+	writer    writer.Writer
 	dlq       *DLQ
 	wg        *sync.WaitGroup
 }
@@ -31,13 +31,14 @@ type WorkerPool struct {
 	workers   []*Worker
 	batchSize int
 	processor *processor.Processor
-	writer    *writer.MySQLWriter
+	writer    writer.Writer
 	dlq       *DLQ
 	wg        sync.WaitGroup
 }
 
-// New creates a new WorkerPool
-func New(numWorkers, batchSize int, proc *processor.Processor, w *writer.MySQLWriter) *WorkerPool {
+// New creates a new WorkerPool with a database writer.
+// The writer can be MySQL or PostgreSQL (any type implementing writer.Writer).
+func New(numWorkers, batchSize int, proc *processor.Processor, w writer.Writer) *WorkerPool {
 	wp := &WorkerPool{
 		workers:   make([]*Worker, numWorkers),
 		batchSize: batchSize,

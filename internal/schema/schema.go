@@ -3,8 +3,9 @@ package schema
 import (
 	"database/sql"
 	"fmt"
-	//"slices"
 	"sync"
+
+	"github.com/sparkiss/pos-cdc/internal/config"
 )
 
 // ColumnInfo holds metadata for a single column
@@ -24,18 +25,20 @@ type TableSchema struct {
 
 // SchemaCache caches primary key information to avoid repeated database queries
 type SchemaCache struct {
-	db     *sql.DB
-	dbName string
-	cache  map[string]*TableSchema
-	mu     sync.RWMutex
+	db         *sql.DB
+	dbName     string
+	targetType config.TargetType
+	cache      map[string]*TableSchema
+	mu         sync.RWMutex
 }
 
 // New creates a new SchemaCache
-func New(db *sql.DB, dbName string) *SchemaCache {
+func New(db *sql.DB, dbName string, targetType config.TargetType) *SchemaCache {
 	return &SchemaCache{
-		db:     db,
-		dbName: dbName,
-		cache:  make(map[string]*TableSchema),
+		db:         db,
+		dbName:     dbName,
+		targetType: targetType,
+		cache:      make(map[string]*TableSchema),
 	}
 }
 
@@ -68,17 +71,37 @@ func (s *SchemaCache) queryTableSchema(table string) (*TableSchema, error) {
 		Columns: make(map[string]*ColumnInfo),
 	}
 
-	// Query all columns with their types
-	colQuery := `
-		SELECT
-			COLUMN_NAME,
-			DATA_TYPE,
-			IS_NULLABLE
-		FROM information_schema.COLUMNS
-		WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
-		ORDER BY ORDINAL_POSITION
-	`
-	rows, err := s.db.Query(colQuery, s.dbName, table)
+	// Query columns - different SQL for MySQL vs PostgreSQL
+	var colQuery string
+	var colArgs []any
+
+	if s.targetType == config.TargetPostgres {
+		// PostgreSQL: use $1, $2 placeholders and 'public' schema
+		colQuery = `
+			SELECT
+				column_name,
+				data_type,
+				is_nullable
+			FROM information_schema.columns
+			WHERE table_schema = 'public' AND table_name = $1
+			ORDER BY ordinal_position
+		`
+		colArgs = []any{table}
+	} else {
+		// MySQL: use ? placeholders and database name as schema
+		colQuery = `
+			SELECT
+				COLUMN_NAME,
+				DATA_TYPE,
+				IS_NULLABLE
+			FROM information_schema.COLUMNS
+			WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+			ORDER BY ORDINAL_POSITION
+		`
+		colArgs = []any{s.dbName, table}
+	}
+
+	rows, err := s.db.Query(colQuery, colArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query columns: %w", err)
 	}
@@ -98,14 +121,32 @@ func (s *SchemaCache) queryTableSchema(table string) (*TableSchema, error) {
 		return nil, fmt.Errorf("table %s not found or has no columns", table)
 	}
 
-	// Query primary keys
-	pkQuery := `
-		SELECT COLUMN_NAME
-		FROM information_schema.KEY_COLUMN_USAGE
-		WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = 'PRIMARY'
-		ORDER BY ORDINAL_POSITION
-	`
-	pkRows, err := s.db.Query(pkQuery, s.dbName, table)
+	// Query primary keys - different SQL for MySQL vs PostgreSQL
+	var pkQuery string
+	var pkArgs []any
+
+	if s.targetType == config.TargetPostgres {
+		// PostgreSQL: query pg_constraint and pg_attribute
+		pkQuery = `
+			SELECT a.attname
+			FROM pg_index i
+			JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+			WHERE i.indrelid = $1::regclass AND i.indisprimary
+			ORDER BY array_position(i.indkey, a.attnum)
+		`
+		pkArgs = []any{table}
+	} else {
+		// MySQL: use KEY_COLUMN_USAGE
+		pkQuery = `
+			SELECT COLUMN_NAME
+			FROM information_schema.KEY_COLUMN_USAGE
+			WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND CONSTRAINT_NAME = 'PRIMARY'
+			ORDER BY ORDINAL_POSITION
+		`
+		pkArgs = []any{s.dbName, table}
+	}
+
+	pkRows, err := s.db.Query(pkQuery, pkArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query primary keys: %w", err)
 	}

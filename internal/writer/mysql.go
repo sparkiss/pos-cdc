@@ -14,21 +14,18 @@ import (
 	"go.uber.org/zap"
 )
 
+// MySQLWriter implements the Writer interface for MySQL databases.
 type MySQLWriter struct {
 	db         *sql.DB
 	maxRetries int
 	backoffMS  int
 }
 
-// Query represents a single database operation
-type Query struct {
-	SQL   string
-	Args  []any
-	Table string
-	Op    string
-}
+// Compile-time check that MySQLWriter implements Writer interface.
+var _ Writer = (*MySQLWriter)(nil)
 
-func New(cfg *config.Config) (*MySQLWriter, error) {
+// NewMySQL creates a new MySQL writer from configuration.
+func NewMySQL(cfg *config.Config) (*MySQLWriter, error) {
 	db, err := sql.Open("mysql", cfg.TargetDSN())
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)

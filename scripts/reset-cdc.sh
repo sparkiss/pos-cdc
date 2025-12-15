@@ -4,6 +4,10 @@
 #
 # WARNING: This is for DEVELOPMENT only. Do not use in production!
 #
+# The --truncate-target option respects TARGET_TYPE from .env:
+#   - TARGET_TYPE=mysql   -> truncates mysql-target container tables
+#   - TARGET_TYPE=postgres -> truncates postgres-target container tables
+#
 # Uses Kafka Connect 3.6+ REST API for proper offset reset:
 # https://debezium.io/documentation/faq/
 
@@ -160,16 +164,42 @@ if [ "$1" = "--truncate-target" ]; then
     set +a
   fi
 
-  if [ -z "${TARGET_DB_PASSWORD}" ]; then
-    echo -e "${RED}Error: TARGET_DB_PASSWORD not set. Source .env first.${NC}"
-    exit 1
+  # Determine target type (default to mysql for backwards compatibility)
+  TARGET_TYPE="${TARGET_TYPE:-mysql}"
+
+  if [ "$TARGET_TYPE" = "postgres" ]; then
+    # PostgreSQL target
+    if [ -z "${TARGET_PG_PASSWORD}" ]; then
+      echo -e "${RED}Error: TARGET_PG_PASSWORD not set. Source .env first.${NC}"
+      exit 1
+    fi
+
+    # Truncate all tables in PostgreSQL
+    docker exec postgres-target psql -U "${TARGET_PG_USER:-cdc_writer}" -d "${TARGET_PG_DATABASE:-pos_replica}" -c "
+      DO \$\$
+      DECLARE
+        r RECORD;
+      BEGIN
+        FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+          EXECUTE 'TRUNCATE TABLE \"' || r.tablename || '\" CASCADE';
+        END LOOP;
+      END \$\$;
+    " 2>/dev/null
+
+    echo -e "${GREEN}PostgreSQL target tables truncated${NC}"
+  else
+    # MySQL target (default)
+    if [ -z "${TARGET_DB_PASSWORD}" ]; then
+      echo -e "${RED}Error: TARGET_DB_PASSWORD not set. Source .env first.${NC}"
+      exit 1
+    fi
+
+    # Get list of tables and truncate each
+    docker exec mysql-target mysql -u"${TARGET_DB_USER:-root}" -p"${TARGET_DB_PASSWORD}" "${TARGET_DB_NAME:-pos}" \
+      -e "SET FOREIGN_KEY_CHECKS=0; $(docker exec mysql-target mysql -u"${TARGET_DB_USER:-root}" -p"${TARGET_DB_PASSWORD}" "${TARGET_DB_NAME:-pos}" -N -e "SELECT CONCAT('TRUNCATE TABLE \`', table_name, '\`;') FROM information_schema.tables WHERE table_schema='${TARGET_DB_NAME:-pos}'" | tr '\n' ' ') SET FOREIGN_KEY_CHECKS=1;" 2>/dev/null
+
+    echo -e "${GREEN}MySQL target tables truncated${NC}"
   fi
-
-  # Get list of tables and truncate each
-  docker exec mysql-target mysql -u"${TARGET_DB_USER:-root}" -p"${TARGET_DB_PASSWORD}" "${TARGET_DB_NAME:-pos}" \
-    -e "SET FOREIGN_KEY_CHECKS=0; $(docker exec mysql-target mysql -u"${TARGET_DB_USER:-root}" -p"${TARGET_DB_PASSWORD}" "${TARGET_DB_NAME:-pos}" -N -e "SELECT CONCAT('TRUNCATE TABLE \`', table_name, '\`;') FROM information_schema.tables WHERE table_schema='${TARGET_DB_NAME:-pos}'" | tr '\n' ' ') SET FOREIGN_KEY_CHECKS=1;" 2>/dev/null
-
-  echo -e "${GREEN}Target tables truncated${NC}"
 fi
 
 # Wait a bit more for topics to be created

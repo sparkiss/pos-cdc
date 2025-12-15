@@ -3,14 +3,20 @@ package schema
 import (
 	"fmt"
 	"time"
+
+	"github.com/sparkiss/pos-cdc/internal/config"
 )
 
+// Converter handles Debezium value conversion for different target databases.
 type Converter struct {
 	sourceLocation *time.Location
 	targetLocation *time.Location
+	targetType     config.TargetType
 }
 
-func NewConverter(sourceLoc, targetLoc *time.Location) *Converter {
+// NewConverter creates a converter for the specified source and target timezones.
+// The targetType determines the output format for datetime columns.
+func NewConverter(sourceLoc, targetLoc *time.Location, targetType config.TargetType) *Converter {
 	if sourceLoc == nil {
 		sourceLoc = time.UTC
 	}
@@ -20,49 +26,53 @@ func NewConverter(sourceLoc, targetLoc *time.Location) *Converter {
 	return &Converter{
 		sourceLocation: sourceLoc,
 		targetLocation: targetLoc,
+		targetType:     targetType,
 	}
 }
 
 // ConvertValue converts a Debezium payload value to the appropriate Go type
-// based on the target column's data type
+// based on the target column's data type and target database.
 func (c *Converter) ConvertValue(colInfo *ColumnInfo, value any) any {
 	if value == nil {
 		return nil
 	}
 
 	switch colInfo.DataType {
-	// Temporal types
-	case "datetime", "timestamp":
+	// Temporal types - MySQL: datetime, timestamp; PostgreSQL: timestamp with/without time zone
+	case "datetime", "timestamp", "timestamp with time zone", "timestamp without time zone":
 		return c.convertToDateTime(value)
 	case "date":
 		return c.convertToDate(value)
-	case "time":
+	case "time", "time with time zone", "time without time zone":
 		return c.convertToTime(value)
 
-	// Numeric types - pass through (MySQL handles string->number)
-	case "int", "bigint", "smallint", "tinyint", "mediumint":
+	// Numeric types - pass through
+	// MySQL: int, bigint, etc.; PostgreSQL: integer, bigint, smallint
+	case "int", "integer", "bigint", "smallint", "tinyint", "mediumint":
 		return value
-	case "decimal", "numeric", "float", "double":
+	case "decimal", "numeric", "float", "double", "double precision", "real":
 		return value
 
 	// String types - pass through
-	case "varchar", "char", "text", "longtext", "mediumtext", "tinytext":
+	// MySQL: varchar, char, text; PostgreSQL: character varying, character, text
+	case "varchar", "char", "text", "longtext", "mediumtext", "tinytext", "character varying", "character":
 		return value
 
-	// Binary types - pass through (Debezium handles based on binary.handling.mode)
-	case "blob", "longblob", "mediumblob", "tinyblob", "binary", "varbinary":
+	// Binary types - pass through
+	// MySQL: blob, binary; PostgreSQL: bytea
+	case "blob", "longblob", "mediumblob", "tinyblob", "binary", "varbinary", "bytea":
 		return value
 
 	// Boolean
+	// MySQL: bit, bool; PostgreSQL: boolean
 	case "bit", "bool", "boolean":
 		return c.convertToBool(value)
 
-	// JSON
-	case "json":
+	// JSON - MySQL: json; PostgreSQL: json, jsonb
+	case "json", "jsonb":
 		return value
 
 	default:
-		// Unknown type - pass through
 		return value
 	}
 }
@@ -70,21 +80,23 @@ func (c *Converter) ConvertValue(colInfo *ColumnInfo, value any) any {
 func (c *Converter) convertToDateTime(value any) any {
 	switch v := value.(type) {
 	case float64:
-		return c.epochToMySQLDateTime(int64(v))
+		return c.epochToDateTime(int64(v))
 	case int64:
-		return c.epochToMySQLDateTime(v)
+		return c.epochToDateTime(v)
 	case int:
-		return c.epochToMySQLDateTime(int64(v))
+		return c.epochToDateTime(int64(v))
 	case string:
-		// Fallback: parse ISO8601 string and convert to target timezone
 		return c.parseISO8601DateTime(v)
 	}
 	return value
 }
 
-func (c *Converter) epochToMySQLDateTime(v int64) string {
+// epochToDateTime converts epoch milliseconds to the appropriate format.
+// For MySQL: returns string "2006-01-02 15:04:05"
+// For PostgreSQL: returns time.Time with source timezone (pgx handles TZ)
+func (c *Converter) epochToDateTime(v int64) any {
 	// Debezium time.precision.mode=connect sends datetime/timestamp as epoch ms.
-	// However, source DB stores local time without timezone info.
+	// Source DB stores local time without timezone info.
 	// Debezium interprets this as UTC, so the epoch represents the wall-clock
 	// time as if it were UTC.
 	//
@@ -92,29 +104,30 @@ func (c *Converter) epochToMySQLDateTime(v int64) string {
 	utcTime := time.UnixMilli(v)
 
 	// Step 2: Treat those wall-clock values as source timezone
-	// (e.g., "12:00" in source DB was Mountain Time, not UTC)
 	sourceWallClock := time.Date(
 		utcTime.Year(), utcTime.Month(), utcTime.Day(),
 		utcTime.Hour(), utcTime.Minute(), utcTime.Second(),
 		utcTime.Nanosecond(), c.sourceLocation,
 	)
 
-	// Step 3: Convert to target timezone
-	targetTime := sourceWallClock.In(c.targetLocation)
+	// For PostgreSQL: return time.Time with timezone info
+	// The pgx driver will send this with the offset, and PostgreSQL stores as UTC
+	if c.targetType == config.TargetPostgres {
+		return sourceWallClock
+	}
 
+	// For MySQL: convert to target timezone and format as string
+	targetTime := sourceWallClock.In(c.targetLocation)
 	return targetTime.Format("2006-01-02 15:04:05")
 }
 
-// parseISO8601DateTime parses ISO8601 string and converts to target timezone.
-// Handles formats like "2023-08-24T17:53:25Z" or "2023-08-24T17:53:25+00:00".
-// Returns MySQL format "2006-01-02 15:04:05" in target timezone.
-func (c *Converter) parseISO8601DateTime(s string) string {
-	// Try common ISO8601 formats
+// parseISO8601DateTime parses ISO8601 string and converts appropriately.
+func (c *Converter) parseISO8601DateTime(s string) any {
 	formats := []string{
-		time.RFC3339,           // "2006-01-02T15:04:05Z07:00"
-		"2006-01-02T15:04:05Z", // UTC with Z suffix
-		"2006-01-02T15:04:05",  // No timezone info
-		"2006-01-02 15:04:05",  // Already MySQL format
+		time.RFC3339,
+		"2006-01-02T15:04:05Z",
+		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:05",
 	}
 
 	for _, format := range formats {
@@ -123,46 +136,50 @@ func (c *Converter) parseISO8601DateTime(s string) string {
 			if format == "2006-01-02T15:04:05" || format == "2006-01-02 15:04:05" {
 				t = time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), c.sourceLocation)
 			}
-			// Convert to target timezone
+
+			// For PostgreSQL: return time.Time
+			if c.targetType == config.TargetPostgres {
+				return t
+			}
+
+			// For MySQL: format as string in target timezone
 			return t.In(c.targetLocation).Format("2006-01-02 15:04:05")
 		}
 	}
 
-	// If no format matches, return as-is (let MySQL handle/reject it)
 	return s
 }
 
 func (c *Converter) convertToDate(value any) any {
 	switch v := value.(type) {
 	case float64:
-		return c.daysToMySQLDate(int64(v))
+		return c.daysToDate(int64(v))
 	case int64:
-		return c.daysToMySQLDate(v)
+		return c.daysToDate(v)
 	case int:
-		return c.daysToMySQLDate(int64(v))
+		return c.daysToDate(int64(v))
 	case string:
 		return v
 	}
 	return value
 }
 
-func (c *Converter) daysToMySQLDate(days int64) string {
-	// Debezium time.precision.mode=connect sends date as days since epoch.
-	// Since dates have no time component, we interpret midnight UTC
-	// then apply timezone conversion which may shift the date.
-	//
-	// Step 1: Get the date at midnight UTC
+func (c *Converter) daysToDate(days int64) any {
+	// Debezium sends date as days since epoch
 	utcTime := time.Unix(days*86400, 0).UTC()
 
-	// Step 2: Treat as source timezone midnight
 	sourceDate := time.Date(
 		utcTime.Year(), utcTime.Month(), utcTime.Day(),
 		0, 0, 0, 0, c.sourceLocation,
 	)
 
-	// Step 3: Convert to target timezone (date may shift if TZ offset differs)
-	targetDate := sourceDate.In(c.targetLocation)
+	// For PostgreSQL: return time.Time (DATE columns accept time.Time)
+	if c.targetType == config.TargetPostgres {
+		return sourceDate
+	}
 
+	// For MySQL: format as string
+	targetDate := sourceDate.In(c.targetLocation)
 	return targetDate.Format("2006-01-02")
 }
 
@@ -190,7 +207,6 @@ func millisToTimeString(ms int64) string {
 	return fmt.Sprintf("%02d:%02d:%02d", hours, mins, secs)
 }
 
-// convertToBool handles boolean/bit columns
 func (c *Converter) convertToBool(value any) any {
 	switch v := value.(type) {
 	case bool:
