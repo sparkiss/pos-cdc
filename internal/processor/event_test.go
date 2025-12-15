@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sparkiss/pos-cdc/internal/config"
 	"github.com/sparkiss/pos-cdc/internal/models"
 	"github.com/sparkiss/pos-cdc/internal/schema"
 	"github.com/sparkiss/pos-cdc/pkg/logger"
@@ -21,7 +22,9 @@ func TestMain(m *testing.M) {
 // Helper to create a test processor
 func newTestProcessor() *Processor {
 	return &Processor{
-		converter: schema.NewConverter(time.UTC, time.UTC),
+		converter:  schema.NewConverter(time.UTC, time.UTC, config.TargetMySQL),
+		sqlBuilder: NewMySQLBuilder(),
+		targetType: config.TargetMySQL,
 	}
 }
 
@@ -53,8 +56,8 @@ func createUsersSchema() *schema.TableSchema {
 	}
 }
 
-func TestProcessor_BuildInsert(t *testing.T) {
-	p := newTestProcessor()
+func TestMySQLBuilder_BuildInsert(t *testing.T) {
+	builder := NewMySQLBuilder()
 	tableSchema := createOrdersSchema()
 
 	payload := map[string]any{
@@ -64,9 +67,9 @@ func TestProcessor_BuildInsert(t *testing.T) {
 		"status":      "pending",
 	}
 
-	sql, args, err := p.buildInsert("orders", payload, tableSchema)
+	sql, args, err := builder.BuildInsert("orders", payload, tableSchema)
 	if err != nil {
-		t.Fatalf("buildInsert() error = %v", err)
+		t.Fatalf("BuildInsert() error = %v", err)
 	}
 
 	// Check SQL structure
@@ -94,8 +97,8 @@ func TestProcessor_BuildInsert(t *testing.T) {
 	}
 }
 
-func TestProcessor_BuildInsert_SkipsMetaFields(t *testing.T) {
-	p := newTestProcessor()
+func TestMySQLBuilder_BuildInsert_SkipsMetaFields(t *testing.T) {
+	builder := NewMySQLBuilder()
 	tableSchema := createOrdersSchema()
 
 	payload := map[string]any{
@@ -106,9 +109,9 @@ func TestProcessor_BuildInsert_SkipsMetaFields(t *testing.T) {
 		"__source_table": "orders",
 	}
 
-	sql, args, err := p.buildInsert("orders", payload, tableSchema)
+	sql, args, err := builder.BuildInsert("orders", payload, tableSchema)
 	if err != nil {
-		t.Fatalf("buildInsert() error = %v", err)
+		t.Fatalf("BuildInsert() error = %v", err)
 	}
 
 	// Meta fields should not be in SQL
@@ -125,8 +128,8 @@ func TestProcessor_BuildInsert_SkipsMetaFields(t *testing.T) {
 	}
 }
 
-func TestProcessor_BuildUpdate(t *testing.T) {
-	p := newTestProcessor()
+func TestMySQLBuilder_BuildUpdate(t *testing.T) {
+	builder := NewMySQLBuilder()
 	tableSchema := createOrdersSchema()
 
 	payload := map[string]any{
@@ -135,9 +138,9 @@ func TestProcessor_BuildUpdate(t *testing.T) {
 		"total":  "149.99",
 	}
 
-	sql, args, err := p.buildUpdate("orders", payload, tableSchema)
+	sql, args, err := builder.BuildUpdate("orders", payload, tableSchema)
 	if err != nil {
-		t.Fatalf("buildUpdate() error = %v", err)
+		t.Fatalf("BuildUpdate() error = %v", err)
 	}
 
 	// Check SQL structure
@@ -160,8 +163,8 @@ func TestProcessor_BuildUpdate(t *testing.T) {
 	}
 }
 
-func TestProcessor_BuildUpdate_CompositePK(t *testing.T) {
-	p := newTestProcessor()
+func TestMySQLBuilder_BuildUpdate_CompositePK(t *testing.T) {
+	builder := NewMySQLBuilder()
 	tableSchema := createUsersSchema()
 
 	payload := map[string]any{
@@ -170,9 +173,9 @@ func TestProcessor_BuildUpdate_CompositePK(t *testing.T) {
 		"granted": "2025-01-01 12:00:00",
 	}
 
-	sql, args, err := p.buildUpdate("user_roles", payload, tableSchema)
+	sql, args, err := builder.BuildUpdate("user_roles", payload, tableSchema)
 	if err != nil {
-		t.Fatalf("buildUpdate() error = %v", err)
+		t.Fatalf("BuildUpdate() error = %v", err)
 	}
 
 	// Should have both PKs in WHERE
@@ -192,8 +195,8 @@ func TestProcessor_BuildUpdate_CompositePK(t *testing.T) {
 	}
 }
 
-func TestProcessor_BuildUpdate_NoPrimaryKey(t *testing.T) {
-	p := newTestProcessor()
+func TestMySQLBuilder_BuildUpdate_NoPrimaryKey(t *testing.T) {
+	builder := NewMySQLBuilder()
 	tableSchema := &schema.TableSchema{
 		Name: "no_pk_table",
 		Columns: map[string]*schema.ColumnInfo{
@@ -206,23 +209,59 @@ func TestProcessor_BuildUpdate_NoPrimaryKey(t *testing.T) {
 		"data": "test",
 	}
 
-	_, _, err := p.buildUpdate("no_pk_table", payload, tableSchema)
+	_, _, err := builder.BuildUpdate("no_pk_table", payload, tableSchema)
 	if err == nil {
-		t.Error("buildUpdate() should return error for table without primary key")
+		t.Error("BuildUpdate() should return error for table without primary key")
 	}
 }
 
-func TestProcessor_BuildDelete(t *testing.T) {
-	p := newTestProcessor()
+func TestMySQLBuilder_BuildUpdate_OnlyPKColumns(t *testing.T) {
+	builder := NewMySQLBuilder()
+	tableSchema := createOrdersSchema()
+
+	// Payload only contains PK - no non-PK columns to update
+	payload := map[string]any{
+		"id": int64(1),
+	}
+
+	_, _, err := builder.BuildUpdate("orders", payload, tableSchema)
+	if err == nil {
+		t.Error("BuildUpdate() should return error when payload has only PK columns")
+	}
+	if !strings.Contains(err.Error(), "no columns to update") {
+		t.Errorf("error message should mention 'no columns to update', got: %v", err)
+	}
+}
+
+func TestPostgresBuilder_BuildUpdate_OnlyPKColumns(t *testing.T) {
+	builder := NewPostgresBuilder()
+	tableSchema := createOrdersSchema()
+
+	// Payload only contains PK - no non-PK columns to update
+	payload := map[string]any{
+		"id": int64(1),
+	}
+
+	_, _, err := builder.BuildUpdate("orders", payload, tableSchema)
+	if err == nil {
+		t.Error("BuildUpdate() should return error when payload has only PK columns")
+	}
+	if !strings.Contains(err.Error(), "no columns to update") {
+		t.Errorf("error message should mention 'no columns to update', got: %v", err)
+	}
+}
+
+func TestMySQLBuilder_BuildDelete(t *testing.T) {
+	builder := NewMySQLBuilder()
 	tableSchema := createOrdersSchema()
 
 	payload := map[string]any{
 		"id": int64(1),
 	}
 
-	sql, args, err := p.buildDelete("orders", payload, tableSchema)
+	sql, args, err := builder.BuildDelete("orders", payload, tableSchema)
 	if err != nil {
-		t.Fatalf("buildDelete() error = %v", err)
+		t.Fatalf("BuildDelete() error = %v", err)
 	}
 
 	// Check SQL structure - should be UPDATE for soft delete
@@ -244,8 +283,8 @@ func TestProcessor_BuildDelete(t *testing.T) {
 	}
 }
 
-func TestProcessor_BuildDelete_CompositePK(t *testing.T) {
-	p := newTestProcessor()
+func TestMySQLBuilder_BuildDelete_CompositePK(t *testing.T) {
+	builder := NewMySQLBuilder()
 	tableSchema := createUsersSchema()
 
 	payload := map[string]any{
@@ -253,9 +292,9 @@ func TestProcessor_BuildDelete_CompositePK(t *testing.T) {
 		"role_id": int64(2),
 	}
 
-	sql, args, err := p.buildDelete("user_roles", payload, tableSchema)
+	sql, args, err := builder.BuildDelete("user_roles", payload, tableSchema)
 	if err != nil {
-		t.Fatalf("buildDelete() error = %v", err)
+		t.Fatalf("BuildDelete() error = %v", err)
 	}
 
 	// Should have both PKs in WHERE
@@ -272,8 +311,8 @@ func TestProcessor_BuildDelete_CompositePK(t *testing.T) {
 	}
 }
 
-func TestProcessor_BuildDelete_MissingPK(t *testing.T) {
-	p := newTestProcessor()
+func TestMySQLBuilder_BuildDelete_MissingPK(t *testing.T) {
+	builder := NewMySQLBuilder()
 	tableSchema := createUsersSchema()
 
 	// Missing role_id
@@ -281,9 +320,9 @@ func TestProcessor_BuildDelete_MissingPK(t *testing.T) {
 		"user_id": int64(1),
 	}
 
-	_, _, err := p.buildDelete("user_roles", payload, tableSchema)
+	_, _, err := builder.BuildDelete("user_roles", payload, tableSchema)
 	if err == nil {
-		t.Error("buildDelete() should return error when PK values are missing")
+		t.Error("BuildDelete() should return error when PK values are missing")
 	}
 }
 
@@ -360,5 +399,72 @@ func TestCDCEvent_GetOperation_Integration(t *testing.T) {
 				t.Errorf("GetOperation() = %v, want %v", got, tt.expected)
 			}
 		})
+	}
+}
+
+// Test PostgreSQL builder
+func TestPostgresBuilder_BuildInsert(t *testing.T) {
+	builder := NewPostgresBuilder()
+	tableSchema := createOrdersSchema()
+
+	payload := map[string]any{
+		"id":          int64(1),
+		"customer_id": int64(100),
+		"total":       "99.99",
+		"status":      "pending",
+	}
+
+	sql, args, err := builder.BuildInsert("orders", payload, tableSchema)
+	if err != nil {
+		t.Fatalf("BuildInsert() error = %v", err)
+	}
+
+	// Check PostgreSQL-specific syntax
+	if !strings.HasPrefix(sql, `INSERT INTO "orders"`) {
+		t.Errorf("SQL should start with INSERT INTO \"orders\", got: %s", sql)
+	}
+	if !strings.Contains(sql, "ON CONFLICT") {
+		t.Error("SQL should contain ON CONFLICT")
+	}
+	if !strings.Contains(sql, "DO UPDATE SET") {
+		t.Error("SQL should contain DO UPDATE SET")
+	}
+	if !strings.Contains(sql, "$1") {
+		t.Error("SQL should use $1 placeholders")
+	}
+	if !strings.Contains(sql, `"deleted_at"`) {
+		t.Error("SQL should include deleted_at column with double quotes")
+	}
+
+	// Check args count (payload fields + deleted_at)
+	if len(args) != 5 { // 4 payload fields + 1 deleted_at
+		t.Errorf("args count = %d, want 5", len(args))
+	}
+}
+
+func TestPostgresBuilder_BuildDelete(t *testing.T) {
+	builder := NewPostgresBuilder()
+	tableSchema := createOrdersSchema()
+
+	payload := map[string]any{
+		"id": int64(1),
+	}
+
+	sql, args, err := builder.BuildDelete("orders", payload, tableSchema)
+	if err != nil {
+		t.Fatalf("BuildDelete() error = %v", err)
+	}
+
+	// Check PostgreSQL-specific syntax
+	if !strings.HasPrefix(sql, `UPDATE "orders" SET "deleted_at" = $1`) {
+		t.Errorf("SQL should be UPDATE with $1 for soft delete, got: %s", sql)
+	}
+	if !strings.Contains(sql, `WHERE "id" = $2`) {
+		t.Errorf("SQL should contain WHERE \"id\" = $2, got: %s", sql)
+	}
+
+	// Args: 1 (deleted_at timestamp) + 1 (WHERE id) = 2
+	if len(args) != 2 {
+		t.Errorf("args count = %d, want 2", len(args))
 	}
 }

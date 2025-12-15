@@ -1,14 +1,15 @@
 # POS CDC Consumer
 
-A Change Data Capture (CDC) pipeline that replicates data from a MySQL 5.7 production database to a MySQL 8 target database using Debezium and Redpanda (Kafka-compatible).
+A Change Data Capture (CDC) pipeline that replicates data from a MySQL 5.7 production database to either **MySQL 8** or **PostgreSQL 18** target database using Debezium and Redpanda (Kafka-compatible).
 
 ## Problem It Solves
 
-- **Real-time data replication** from legacy MySQL 5.7 to modern MySQL 8
+- **Real-time data replication** from legacy MySQL 5.7 to modern MySQL 8 or PostgreSQL
 - **Zero-downtime migration** - source database continues operating normally
 - **Selective replication** - exclude unnecessary tables (logs, locks, etc.)
 - **Soft deletes on target** - preserves data history even when source does hard deletes
 - **Timezone handling** - correctly converts timestamps between different timezones
+- **Multi-database support** - choose MySQL or PostgreSQL as target via configuration
 
 ## Architecture
 
@@ -18,11 +19,13 @@ A Change Data Capture (CDC) pipeline that replicates data from a MySQL 5.7 produ
 │  (Source)       │     │ Connector │     │ (Kafka)   │     │  (Go App)       │
 └─────────────────┘     └───────────┘     └───────────┘     └────────┬────────┘
                                                                      │
-                                                                     ▼
-                                                            ┌─────────────────┐
-                                                            │    MySQL 8      │
-                                                            │   (Target)      │
-                                                            └─────────────────┘
+                                                      TARGET_TYPE────┼────────┐
+                                                                     │        │
+                                                                     ▼        ▼
+                                                            ┌────────────┐ ┌────────────┐
+                                                            │  MySQL 8   │ │ PostgreSQL │
+                                                            │  (Target)  │ │  (Target)  │
+                                                            └────────────┘ └────────────┘
 ```
 
 ## Technology Stack
@@ -30,7 +33,7 @@ A Change Data Capture (CDC) pipeline that replicates data from a MySQL 5.7 produ
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | Source DB | MySQL 5.7 | Production database |
-| Target DB | MySQL 8 | Replica database |
+| Target DB | MySQL 8 or PostgreSQL 18 | Replica database (configurable) |
 | CDC Capture | Debezium | Reads MySQL binlog |
 | Message Broker | Redpanda | Kafka-compatible streaming |
 | Consumer | Go | Processes events, writes to target |
@@ -103,7 +106,13 @@ go run cmd/cdc-consumer/main.go
 
 ## Environment Variables
 
-### Required Variables
+### Target Selection
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TARGET_TYPE` | `mysql` | Target database type: `mysql` or `postgres` |
+
+### Source Database (Required)
 
 | Variable | Description | Example |
 |----------|-------------|---------|
@@ -112,11 +121,27 @@ go run cmd/cdc-consumer/main.go
 | `SOURCE_DB_USER` | Source MySQL user | `cdc_user` |
 | `SOURCE_DB_PASSWORD` | Source MySQL password | `secret` |
 | `SOURCE_DB_NAME` | Source database name | `pos` |
+
+### Target Database - MySQL (when TARGET_TYPE=mysql)
+
+| Variable | Description | Example |
+|----------|-------------|---------|
 | `TARGET_DB_HOST` | Target MySQL host | `192.168.0.104` |
 | `TARGET_DB_PORT` | Target MySQL port | `3306` |
 | `TARGET_DB_USER` | Target MySQL user | `cdc_writer` |
 | `TARGET_DB_PASSWORD` | Target MySQL password | `secret` |
 | `TARGET_DB_NAME` | Target database name | `pos_replica` |
+
+### Target Database - PostgreSQL (when TARGET_TYPE=postgres)
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `TARGET_PG_HOST` | Target PostgreSQL host | `192.168.0.104` |
+| `TARGET_PG_PORT` | Target PostgreSQL port | `5432` |
+| `TARGET_PG_USER` | Target PostgreSQL user | `cdc_writer` |
+| `TARGET_PG_PASSWORD` | Target PostgreSQL password | `secret` |
+| `TARGET_PG_DATABASE` | Target database name | `pos_replica` |
+| `TARGET_PG_SSLMODE` | SSL mode | `disable`, `require`, `verify-full` |
 
 ### Optional Variables
 
@@ -160,13 +185,52 @@ FLUSH PRIVILEGES;
 
 ## Target Database Requirements
 
-Create CDC writer user on target:
+### MySQL Target
+
+Create CDC writer user on MySQL target:
 
 ```sql
 CREATE USER 'cdc_writer'@'%' IDENTIFIED BY 'your_password';
 GRANT ALL PRIVILEGES ON pos_replica.* TO 'cdc_writer'@'%';
 FLUSH PRIVILEGES;
 ```
+
+### PostgreSQL Target
+
+Create CDC writer user on PostgreSQL target:
+
+```sql
+-- Create user
+CREATE USER cdc_writer WITH PASSWORD 'your_password';
+
+-- Create database
+CREATE DATABASE pos_replica OWNER cdc_writer;
+
+-- Connect to database and grant permissions
+\c pos_replica
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO cdc_writer;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO cdc_writer;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO cdc_writer;
+```
+
+#### Initialize PostgreSQL Schema
+
+Convert MySQL schema to PostgreSQL using the provided script:
+
+```bash
+# Generate PostgreSQL DDL from MySQL schema
+python3 scripts/prepare-target-schema-pg.py configs/target-schema.sql > configs/target-schema-pg.sql
+
+# Apply to PostgreSQL
+psql -h localhost -p 5432 -U cdc_writer -d pos_replica -f configs/target-schema-pg.sql
+```
+
+The script handles type conversions:
+- `INT` → `INTEGER`, `TINYINT` → `SMALLINT`
+- `DATETIME/TIMESTAMP` → `TIMESTAMPTZ` (timezone-aware)
+- `BLOB` → `BYTEA`, `JSON` → `JSONB`
+- `BIT(1)` → `BOOLEAN`
+- Removes `AUTO_INCREMENT`, `ENGINE=`, MySQL-specific syntax
 
 ## Build and Deploy
 
@@ -205,6 +269,7 @@ The project includes three Jenkins pipelines:
 |---------------|------|-------------|
 | `source-db-password` | Secret text | Source MySQL password |
 | `target-db-password` | Secret text | Target MySQL password |
+| `target-pg-password` | Secret text | Target PostgreSQL password |
 | `grafana-password` | Secret text | Grafana admin password |
 | `ghcr-credentials` | Username/Password | GitHub Container Registry |
 | `cdc-server-ssh-key` | SSH Key | Deployment server access |
@@ -245,6 +310,14 @@ Creates `configs/debezium-mysql-connector.json` from environment variables:
 
 ```bash
 ./scripts/set-debezium-config.sh
+```
+
+### Convert MySQL Schema to PostgreSQL
+
+Generates PostgreSQL-compatible DDL from MySQL schema:
+
+```bash
+python3 scripts/prepare-target-schema-pg.py configs/target-schema.sql > configs/target-schema-pg.sql
 ```
 
 ## Monitoring
@@ -311,6 +384,7 @@ SHOW GRANTS FOR 'cdc_writer'@'%';
 
 If timestamps are off, verify timezone settings:
 
+**MySQL:**
 ```sql
 -- Check MySQL timezone
 SELECT @@global.time_zone, @@session.time_zone;
@@ -319,7 +393,40 @@ SELECT @@global.time_zone, @@session.time_zone;
 SET GLOBAL time_zone = 'America/Toronto';
 ```
 
+**PostgreSQL:**
+```sql
+-- Check PostgreSQL timezone
+SHOW timezone;
+
+-- Set session timezone
+SET timezone = 'America/Toronto';
+
+-- Query timestamps in specific timezone
+SELECT created_at AT TIME ZONE 'America/Toronto' FROM orders;
+```
+
 Ensure `SOURCE_DB_TIMEZONE` and `TARGET_DB_TIMEZONE` in `.env` match your databases.
+
+### PostgreSQL Connection Issues
+
+```bash
+# Test PostgreSQL connection
+psql -h localhost -p 5432 -U cdc_writer -d pos_replica -c "SELECT 1"
+
+# Check if PostgreSQL container is healthy
+docker ps --filter name=postgres-target
+
+# View PostgreSQL logs
+docker logs postgres-target
+```
+
+### PostgreSQL Type Errors
+
+If you see errors like `unable to encode into binary format for timestamptz`:
+
+1. Ensure tables were created with correct PostgreSQL types (use `prepare-target-schema-pg.py`)
+2. Check that `TARGET_TYPE=postgres` is set in `.env`
+3. Verify the column types: `\d+ table_name` in psql
 
 ### View Failed Events (DLQ)
 
@@ -350,13 +457,15 @@ pos-cdc/
 │   ├── health/             # Health check server
 │   ├── models/             # Data models
 │   ├── pool/               # Worker pool & DLQ
-│   ├── processor/          # Event processing logic
-│   └── writer/             # MySQL writer
+│   ├── processor/          # Event processing & SQL builders
+│   ├── schema/             # Schema cache & type converter
+│   └── writer/             # Database writers (MySQL & PostgreSQL)
 ├── pkg/
 │   └── logger/             # Logging utilities
 ├── scripts/
-│   ├── reset-cdc.sh        # Reset pipeline
-│   └── set-debezium-config.sh  # Generate connector config
+│   ├── reset-cdc.sh              # Reset pipeline
+│   ├── set-debezium-config.sh    # Generate connector config
+│   └── prepare-target-schema-pg.py  # MySQL→PostgreSQL schema converter
 ├── Dockerfile
 ├── Jenkinsfile             # CI pipeline
 ├── Jenkinsfile.build       # Build pipeline

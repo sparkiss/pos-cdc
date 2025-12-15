@@ -1,8 +1,10 @@
 # deployments/docker/docker-compose.dev.yml
-# Development environment - adds mysql-target container
+# Development environment - adds target database containers
+# Use TARGET_TYPE env var to select which target database to use
 
 services:
   # Target MySQL 8 (Docker container for dev)
+  # Use when TARGET_TYPE=mysql
   mysql-target:
     image: mysql:8.0
     container_name: mysql-target
@@ -27,6 +29,44 @@ services:
       - --default-authentication-plugin=mysql_native_password
       - --default-time-zone=America/Toronto
 
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+        compress: "true"
+
+  # Target PostgreSQL 18 (Docker container for dev)
+  # Use when TARGET_TYPE=postgres
+  postgres-target:
+    image: postgres:18
+    container_name: postgres-target
+    restart: unless-stopped
+    networks:
+      - cdc-network
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: ${TARGET_PG_USER:-cdc_writer}
+      POSTGRES_PASSWORD: ${TARGET_PG_PASSWORD}
+      POSTGRES_DB: ${TARGET_PG_DATABASE:-pos_replica}
+      TZ: America/Toronto
+      PGTZ: America/Toronto
+    volumes:
+      - postgres-target-data:/var/lib/postgresql/18/data
+      - ./../../configs/target-schema-pg.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    command:
+      - -c
+      - timezone=America/Toronto
+      - -c
+      - log_timezone=America/Toronto
+      - -c
+      - max_connections=100
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TARGET_PG_USER:-cdc_writer} -d ${TARGET_PG_DATABASE:-pos_replica}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     logging:
       driver: "json-file"
       options:
@@ -68,3 +108,4 @@ services:
 
 volumes:
   mysql-target-data:
+  postgres-target-data:

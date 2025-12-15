@@ -3,6 +3,8 @@ package schema
 import (
 	"testing"
 	"time"
+
+	"github.com/sparkiss/pos-cdc/internal/config"
 )
 
 func TestNewConverter(t *testing.T) {
@@ -31,7 +33,7 @@ func TestNewConverter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := NewConverter(tt.sourceLoc, tt.targetLoc)
+			c := NewConverter(tt.sourceLoc, tt.targetLoc, config.TargetMySQL)
 			if c.sourceLocation.String() != tt.wantSource {
 				t.Errorf("sourceLocation = %v, want %v", c.sourceLocation, tt.wantSource)
 			}
@@ -43,7 +45,7 @@ func TestNewConverter(t *testing.T) {
 }
 
 func TestConverter_ConvertValue_Nil(t *testing.T) {
-	c := NewConverter(nil, nil)
+	c := NewConverter(nil, nil, config.TargetMySQL)
 	col := &ColumnInfo{Name: "test", DataType: "datetime"}
 
 	result := c.ConvertValue(col, nil)
@@ -60,7 +62,7 @@ func TestConverter_ConvertValue_DateTime(t *testing.T) {
 	//
 	// For predictable tests, we use string inputs which bypass epoch conversion
 
-	c := NewConverter(time.UTC, time.UTC)
+	c := NewConverter(time.UTC, time.UTC, config.TargetMySQL)
 	col := &ColumnInfo{Name: "created_at", DataType: "datetime"}
 
 	tests := []struct {
@@ -123,13 +125,13 @@ func TestConverter_EpochToMySQLDateTime(t *testing.T) {
 	localTZ := time.Local
 
 	// Create converter with local timezone for both source and target
-	c := NewConverter(localTZ, localTZ)
+	c := NewConverter(localTZ, localTZ, config.TargetMySQL)
 
 	// Use a known epoch and calculate expected local time
 	epoch := int64(1735689600000) // 2025-01-01 00:00:00 UTC
 	expectedTime := time.UnixMilli(epoch).Format("2006-01-02 15:04:05")
 
-	result := c.epochToMySQLDateTime(epoch)
+	result := c.epochToDateTime(epoch)
 	if result != expectedTime {
 		t.Errorf("epochToMySQLDateTime() = %v, want %v (local time)", result, expectedTime)
 	}
@@ -140,7 +142,7 @@ func TestConverter_ConvertValue_DateTime_Timezone(t *testing.T) {
 	// Source is Mountain Time (UTC-7), Target is UTC
 
 	sourceLoc := time.FixedZone("MST", -7*3600)
-	c := NewConverter(sourceLoc, time.UTC)
+	c := NewConverter(sourceLoc, time.UTC, config.TargetMySQL)
 	col := &ColumnInfo{Name: "created_at", DataType: "datetime"}
 
 	// ISO string without TZ is interpreted as source timezone
@@ -162,7 +164,7 @@ func TestConverter_ConvertValue_DateTime_Timezone(t *testing.T) {
 func TestConverter_ConvertValue_DateTime_SameTimezone(t *testing.T) {
 	// When source and target are the same, wall-clock time is preserved
 	toronto, _ := time.LoadLocation("America/Toronto")
-	c := NewConverter(toronto, toronto)
+	c := NewConverter(toronto, toronto, config.TargetMySQL)
 	col := &ColumnInfo{Name: "created_at", DataType: "datetime"}
 
 	// ISO string without TZ - interpreted as source, converted to same target
@@ -181,7 +183,7 @@ func TestConverter_ConvertValue_DateTime_SameTimezone(t *testing.T) {
 }
 
 func TestConverter_ConvertValue_Timestamp(t *testing.T) {
-	c := NewConverter(time.UTC, time.UTC)
+	c := NewConverter(time.UTC, time.UTC, config.TargetMySQL)
 	col := &ColumnInfo{Name: "updated_at", DataType: "timestamp"}
 
 	// Use string input to test timestamp type handling (same as datetime)
@@ -198,7 +200,7 @@ func TestConverter_ConvertValue_Timestamp(t *testing.T) {
 }
 
 func TestConverter_ConvertValue_Date(t *testing.T) {
-	c := NewConverter(time.UTC, time.UTC)
+	c := NewConverter(time.UTC, time.UTC, config.TargetMySQL)
 	col := &ColumnInfo{Name: "birth_date", DataType: "date"}
 
 	tests := []struct {
@@ -248,7 +250,7 @@ func TestConverter_ConvertValue_Date(t *testing.T) {
 }
 
 func TestConverter_ConvertValue_Time(t *testing.T) {
-	c := NewConverter(nil, nil)
+	c := NewConverter(nil, nil, config.TargetMySQL)
 	col := &ColumnInfo{Name: "start_time", DataType: "time"}
 
 	tests := []struct {
@@ -318,7 +320,7 @@ func TestMillisToTimeString(t *testing.T) {
 }
 
 func TestConverter_ConvertValue_Bool(t *testing.T) {
-	c := NewConverter(nil, nil)
+	c := NewConverter(nil, nil, config.TargetMySQL)
 
 	tests := []struct {
 		name     string
@@ -357,7 +359,7 @@ func TestConverter_ConvertValue_Bool(t *testing.T) {
 }
 
 func TestConverter_ConvertValue_Passthrough(t *testing.T) {
-	c := NewConverter(nil, nil)
+	c := NewConverter(nil, nil, config.TargetMySQL)
 
 	tests := []struct {
 		dataType string
@@ -393,7 +395,7 @@ func TestConverter_ConvertValue_Passthrough(t *testing.T) {
 }
 
 func TestConverter_ConvertValue_Blob(t *testing.T) {
-	c := NewConverter(nil, nil)
+	c := NewConverter(nil, nil, config.TargetMySQL)
 	col := &ColumnInfo{Name: "data", DataType: "blob"}
 
 	input := []byte("binary data")
@@ -410,7 +412,7 @@ func TestConverter_ConvertValue_Blob(t *testing.T) {
 }
 
 func TestConverter_ConvertValue_UnknownType(t *testing.T) {
-	c := NewConverter(nil, nil)
+	c := NewConverter(nil, nil, config.TargetMySQL)
 	col := &ColumnInfo{Name: "custom", DataType: "custom_unknown_type"}
 
 	input := "some value"
@@ -421,8 +423,120 @@ func TestConverter_ConvertValue_UnknownType(t *testing.T) {
 	}
 }
 
+func TestConverter_PostgresTypes(t *testing.T) {
+	// Test PostgreSQL-specific type names that differ from MySQL
+	c := NewConverter(time.UTC, time.UTC, config.TargetPostgres)
+
+	tests := []struct {
+		name     string
+		dataType string
+		input    any
+		check    func(any) bool
+	}{
+		// Temporal types
+		{
+			name:     "timestamp with time zone from epoch ms",
+			dataType: "timestamp with time zone",
+			input:    float64(1735689600000), // 2025-01-01 00:00:00 UTC
+			check: func(v any) bool {
+				_, ok := v.(time.Time)
+				return ok
+			},
+		},
+		{
+			name:     "timestamp without time zone from epoch ms",
+			dataType: "timestamp without time zone",
+			input:    float64(1735689600000),
+			check: func(v any) bool {
+				_, ok := v.(time.Time)
+				return ok
+			},
+		},
+		{
+			name:     "time with time zone passthrough",
+			dataType: "time with time zone",
+			input:    int64(45296000), // 12:34:56 in ms
+			check: func(v any) bool {
+				s, ok := v.(string)
+				return ok && s == "12:34:56"
+			},
+		},
+		// Numeric types
+		{
+			name:     "integer passthrough",
+			dataType: "integer",
+			input:    int64(42),
+			check: func(v any) bool {
+				return v == int64(42)
+			},
+		},
+		{
+			name:     "double precision passthrough",
+			dataType: "double precision",
+			input:    float64(3.14159),
+			check: func(v any) bool {
+				return v == float64(3.14159)
+			},
+		},
+		{
+			name:     "real passthrough",
+			dataType: "real",
+			input:    float64(3.14),
+			check: func(v any) bool {
+				return v == float64(3.14)
+			},
+		},
+		// String types
+		{
+			name:     "character varying passthrough",
+			dataType: "character varying",
+			input:    "hello",
+			check: func(v any) bool {
+				return v == "hello"
+			},
+		},
+		{
+			name:     "character passthrough",
+			dataType: "character",
+			input:    "A",
+			check: func(v any) bool {
+				return v == "A"
+			},
+		},
+		// Binary
+		{
+			name:     "bytea passthrough",
+			dataType: "bytea",
+			input:    []byte("binary data"),
+			check: func(v any) bool {
+				b, ok := v.([]byte)
+				return ok && string(b) == "binary data"
+			},
+		},
+		// JSON
+		{
+			name:     "jsonb passthrough",
+			dataType: "jsonb",
+			input:    `{"key": "value"}`,
+			check: func(v any) bool {
+				return v == `{"key": "value"}`
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			col := &ColumnInfo{Name: "test_col", DataType: tt.dataType}
+			result := c.ConvertValue(col, tt.input)
+			if !tt.check(result) {
+				t.Errorf("ConvertValue(%v) for %s = %v (%T), check failed", tt.input, tt.dataType, result, result)
+			}
+		})
+	}
+}
+
 func TestConverter_ParseISO8601DateTime(t *testing.T) {
-	c := NewConverter(time.UTC, time.UTC)
+	c := NewConverter(time.UTC, time.UTC, config.TargetMySQL)
 
 	tests := []struct {
 		name  string

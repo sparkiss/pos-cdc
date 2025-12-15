@@ -11,10 +11,24 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// TargetType represents the target database type
+type TargetType string
+
+const (
+	TargetMySQL    TargetType = "mysql"
+	TargetPostgres TargetType = "postgres"
+)
+
 // Config holds all application configuration
 type Config struct {
-	// Database
+	// Target database selection
+	TargetType TargetType
+
+	// MySQL target database (used when TargetType == "mysql")
 	TargetDB DBConfig
+
+	// PostgreSQL target database (used when TargetType == "postgres")
+	TargetPG PGConfig
 
 	// Kafka/Redpanda
 	KafkaBrokers         []string
@@ -45,13 +59,23 @@ type Config struct {
 	TargetLocation *time.Location
 }
 
-// DBConfig holds database connection settings
+// DBConfig holds MySQL database connection settings
 type DBConfig struct {
 	Host     string
 	Port     int
 	User     string
 	Password string
 	Database string
+}
+
+// PGConfig holds PostgreSQL database connection settings
+type PGConfig struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Database string
+	SSLMode  string // disable, require, verify-ca, verify-full
 }
 
 // Load reads configuration from environment variables
@@ -62,12 +86,21 @@ func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
+		TargetType: TargetType(getEnv("TARGET_TYPE", "mysql")),
 		TargetDB: DBConfig{
 			Host:     getEnv("TARGET_DB_HOST", "localhost"),
 			Port:     getEnvInt("TARGET_DB_PORT", 3307),
 			User:     getEnv("TARGET_DB_USER", "root"),
 			Password: getEnv("TARGET_DB_PASSWORD", ""),
 			Database: getEnv("TARGET_DB_NAME", "pos"),
+		},
+		TargetPG: PGConfig{
+			Host:     getEnv("TARGET_PG_HOST", "localhost"),
+			Port:     getEnvInt("TARGET_PG_PORT", 5432),
+			User:     getEnv("TARGET_PG_USER", "cdc_writer"),
+			Password: getEnv("TARGET_PG_PASSWORD", ""),
+			Database: getEnv("TARGET_PG_DATABASE", "pos_replica"),
+			SSLMode:  getEnv("TARGET_PG_SSLMODE", "disable"),
 		},
 		KafkaBrokers:         strings.Split(getEnv("KAFKA_BROKERS", "localhost:9092"), ","),
 		KafkaGroupID:         getEnv("KAFKA_GROUP_ID", "cdc-consumer-group"),
@@ -85,9 +118,17 @@ func Load() (*Config, error) {
 		TargetTimezone:       getEnv("TARGET_DB_TIMEZONE", "UTC"),
 	}
 
-	// Validate required fields
-	if cfg.TargetDB.Password == "" {
-		return nil, fmt.Errorf("TARGET_DB_PASSWORD is required")
+	// Validate target type
+	if cfg.TargetType != TargetMySQL && cfg.TargetType != TargetPostgres {
+		return nil, fmt.Errorf("invalid TARGET_TYPE %q: must be 'mysql' or 'postgres'", cfg.TargetType)
+	}
+
+	// Validate required fields based on target type
+	if cfg.TargetType == TargetMySQL && cfg.TargetDB.Password == "" {
+		return nil, fmt.Errorf("TARGET_DB_PASSWORD is required for MySQL target")
+	}
+	if cfg.TargetType == TargetPostgres && cfg.TargetPG.Password == "" {
+		return nil, fmt.Errorf("TARGET_PG_PASSWORD is required for PostgreSQL target")
 	}
 
 	// Parse source timezone
@@ -116,6 +157,27 @@ func (c *Config) TargetDSN() string {
 		c.TargetDB.Port,
 		c.TargetDB.Database,
 	)
+}
+
+// TargetPostgresDSN returns PostgreSQL connection string for pgx driver.
+// Uses the standard PostgreSQL connection URI format.
+func (c *Config) TargetPostgresDSN() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s&timezone=UTC",
+		c.TargetPG.User,
+		c.TargetPG.Password,
+		c.TargetPG.Host,
+		c.TargetPG.Port,
+		c.TargetPG.Database,
+		c.TargetPG.SSLMode,
+	)
+}
+
+// TargetDatabase returns the database name based on target type.
+func (c *Config) TargetDatabase() string {
+	if c.TargetType == TargetPostgres {
+		return c.TargetPG.Database
+	}
+	return c.TargetDB.Database
 }
 
 // IsTableExcluded checks if a table should be skipped
