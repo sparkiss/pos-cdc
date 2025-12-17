@@ -344,6 +344,7 @@ func TestLoad_ValidConfig(t *testing.T) {
 	}()
 
 	// Set test values
+	t.Setenv("TARGET_TYPE", "mysql") // Explicitly set MySQL target for this test
 	t.Setenv("TARGET_DB_PASSWORD", "test_password")
 	t.Setenv("TARGET_DB_HOST", "testhost")
 	t.Setenv("TARGET_DB_PORT", "3308")

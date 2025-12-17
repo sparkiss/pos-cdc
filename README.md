@@ -110,7 +110,7 @@ go run cmd/cdc-consumer/main.go
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `TARGET_TYPE` | `mysql` | Target database type: `mysql` or `postgres` |
+| `TARGET_TYPE` | `postgres` | Target database type: `mysql` or `postgres` |
 
 ### Source Database (Required)
 
