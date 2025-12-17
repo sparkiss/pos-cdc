@@ -86,7 +86,7 @@ func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		TargetType: TargetType(getEnv("TARGET_TYPE", "mysql")),
+		TargetType: TargetType(getEnv("TARGET_TYPE", "postgres")),
 		TargetDB: DBConfig{
 			Host:     getEnv("TARGET_DB_HOST", "localhost"),
 			Port:     getEnvInt("TARGET_DB_PORT", 3307),

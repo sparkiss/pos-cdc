@@ -25,6 +25,10 @@ pipeline {
         DEPLOY_USER = 'deployer'
         DEPLOY_HOST = '192.168.0.112'
 
+
+        // TargetTYpe
+        TARGET_TYPE=postgres
+
         // Source Database
         SOURCE_DB_HOST = '192.168.0.74'
         SOURCE_DB_PORT = '3306'
@@ -38,7 +42,7 @@ pipeline {
         TARGET_DB_NAME = 'pos_replica'
 
         // Target Database - PostgreSQL (used when TARGET_TYPE=postgres)
-        TARGET_PG_HOST = '192.168.0.104'
+        TARGET_PG_HOST = '192.168.0.101'
         TARGET_PG_PORT = '5432'
         TARGET_PG_USER = 'cdc_writer'
         TARGET_PG_DATABASE = 'pos_replica'
