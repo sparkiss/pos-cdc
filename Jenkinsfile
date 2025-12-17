@@ -40,7 +40,7 @@ pipeline {
         stage('Lint & Security') {
             agent {
                 docker {
-                    image 'golangci/golangci-lint:latest'
+                    image 'golangci/golangci-lint:v2.7.2-alpine'
                     args '-u root:root'
                 }
             }
