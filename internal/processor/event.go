@@ -76,7 +76,11 @@ func (p *Processor) convertPayload(payload map[string]any, tableSchema *schema.T
 			continue
 		}
 
-		if colInfo, ok := tableSchema.Columns[colName]; ok {
+		// Look up column info - try exact match first, then case-insensitive
+		// This handles case where CDC sends MySQL column names (potentially mixed case)
+		// but schema has PostgreSQL column names (lowercase)
+		colInfo := p.findColumnInfo(tableSchema, colName)
+		if colInfo != nil {
 			converted[colName] = p.converter.ConvertValue(colInfo, value)
 		} else {
 			converted[colName] = value
@@ -86,4 +90,23 @@ func (p *Processor) convertPayload(payload map[string]any, tableSchema *schema.T
 	logger.Log.Debug("Payload converted", zap.Any("converted", converted))
 
 	return converted
+}
+
+// findColumnInfo looks up column info with case-insensitive fallback.
+// PostgreSQL uses lowercase identifiers, but CDC payload may have original case.
+func (p *Processor) findColumnInfo(tableSchema *schema.TableSchema, colName string) *schema.ColumnInfo {
+	// Exact match first
+	if colInfo, ok := tableSchema.Columns[colName]; ok {
+		return colInfo
+	}
+
+	// Case-insensitive fallback for PostgreSQL
+	if p.targetType == config.TargetPostgres {
+		lowerName := strings.ToLower(colName)
+		if colInfo, ok := tableSchema.Columns[lowerName]; ok {
+			return colInfo
+		}
+	}
+
+	return nil
 }
