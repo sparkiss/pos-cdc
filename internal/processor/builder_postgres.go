@@ -9,7 +9,15 @@ import (
 )
 
 // PostgresBuilder generates PostgreSQL-specific SQL statements.
+// Uses lowercase, unquoted identifiers for case-insensitive queries.
 type PostgresBuilder struct{}
+
+// pgIdent converts an identifier to lowercase for PostgreSQL.
+// PostgreSQL folds unquoted identifiers to lowercase, so using lowercase
+// identifiers allows case-insensitive queries like: SELECT ID FROM ORDERS
+func pgIdent(name string) string {
+	return strings.ToLower(name)
+}
 
 // NewPostgresBuilder creates a new PostgreSQL SQL builder.
 func NewPostgresBuilder() *PostgresBuilder {
@@ -29,27 +37,28 @@ func (b *PostgresBuilder) BuildInsert(table string, payload map[string]any, tabl
 			continue
 		}
 
-		columns = append(columns, fmt.Sprintf(`"%s"`, colName))
+		col := pgIdent(colName)
+		columns = append(columns, col)
 		placeholders = append(placeholders, fmt.Sprintf("$%d", paramIdx))
 		values = append(values, value)
 		paramIdx++
 
 		// Skip primary keys in ON CONFLICT DO UPDATE
 		if colInfo, ok := tableSchema.Columns[colName]; ok && !colInfo.IsPrimary {
-			updateClauses = append(updateClauses, fmt.Sprintf(`"%s" = EXCLUDED."%s"`, colName, colName))
+			updateClauses = append(updateClauses, fmt.Sprintf("%s = EXCLUDED.%s", col, col))
 		}
 	}
 
 	// Add deleted_at = NULL for upsert (un-delete if re-inserted)
-	columns = append(columns, `"deleted_at"`)
+	columns = append(columns, "deleted_at")
 	placeholders = append(placeholders, fmt.Sprintf("$%d", paramIdx))
 	values = append(values, nil)
-	updateClauses = append(updateClauses, `"deleted_at" = NULL`)
+	updateClauses = append(updateClauses, "deleted_at = NULL")
 
 	// Build ON CONFLICT clause with primary key columns
 	var pkColumns []string
 	for _, pk := range tableSchema.PrimaryKeys {
-		pkColumns = append(pkColumns, fmt.Sprintf(`"%s"`, pk))
+		pkColumns = append(pkColumns, pgIdent(pk))
 	}
 
 	if len(pkColumns) == 0 {
@@ -57,8 +66,8 @@ func (b *PostgresBuilder) BuildInsert(table string, payload map[string]any, tabl
 	}
 
 	sql := fmt.Sprintf(
-		`INSERT INTO "%s" (%s) VALUES (%s) ON CONFLICT (%s) DO UPDATE SET %s`,
-		table,
+		"INSERT INTO %s (%s) VALUES (%s) ON CONFLICT (%s) DO UPDATE SET %s",
+		pgIdent(table),
 		strings.Join(columns, ", "),
 		strings.Join(placeholders, ", "),
 		strings.Join(pkColumns, ", "),
@@ -86,7 +95,7 @@ func (b *PostgresBuilder) BuildUpdate(table string, payload map[string]any, tabl
 			continue
 		}
 
-		setClauses = append(setClauses, fmt.Sprintf(`"%s" = $%d`, colName, paramIdx))
+		setClauses = append(setClauses, fmt.Sprintf("%s = $%d", pgIdent(colName), paramIdx))
 		values = append(values, value)
 		paramIdx++
 	}
@@ -107,14 +116,14 @@ func (b *PostgresBuilder) BuildUpdate(table string, payload map[string]any, tabl
 
 	var whereClauses []string
 	for _, pk := range tableSchema.PrimaryKeys {
-		whereClauses = append(whereClauses, fmt.Sprintf(`"%s" = $%d`, pk, paramIdx))
+		whereClauses = append(whereClauses, fmt.Sprintf("%s = $%d", pgIdent(pk), paramIdx))
 		paramIdx++
 	}
 	values = append(values, pkValues...)
 
 	sql := fmt.Sprintf(
-		`UPDATE "%s" SET %s WHERE %s`,
-		table,
+		"UPDATE %s SET %s WHERE %s",
+		pgIdent(table),
 		strings.Join(setClauses, ", "),
 		strings.Join(whereClauses, " AND "),
 	)
@@ -142,13 +151,13 @@ func (b *PostgresBuilder) BuildDelete(table string, payload map[string]any, tabl
 	var whereClauses []string
 	paramIdx := 2 // $1 is deleted_at value
 	for _, pk := range tableSchema.PrimaryKeys {
-		whereClauses = append(whereClauses, fmt.Sprintf(`"%s" = $%d`, pk, paramIdx))
+		whereClauses = append(whereClauses, fmt.Sprintf("%s = $%d", pgIdent(pk), paramIdx))
 		paramIdx++
 	}
 
 	sql := fmt.Sprintf(
-		`UPDATE "%s" SET "deleted_at" = $1 WHERE %s`,
-		table,
+		"UPDATE %s SET deleted_at = $1 WHERE %s",
+		pgIdent(table),
 		strings.Join(whereClauses, " AND "),
 	)
 

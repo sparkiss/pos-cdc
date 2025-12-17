@@ -17,6 +17,16 @@ pipeline {
                     message: "🚀 Build Started: ${env.JOB_NAME} #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}"
                 )
                 checkout scm
+                script {
+                    // Detect Git tag (e.g., v1.0.0)
+                    env.GIT_TAG = sh(
+                        script: 'git describe --tags --exact-match 2>/dev/null || echo ""',
+                        returnStdout: true
+                    ).trim()
+                    if (env.GIT_TAG) {
+                        echo "Building from Git tag: ${env.GIT_TAG}"
+                    }
+                }
             }
         }
 
@@ -52,12 +62,28 @@ pipeline {
             }
         }
 
+        stage('Tag Version') {
+            when {
+                expression { env.GIT_TAG != null && env.GIT_TAG != '' }
+            }
+            steps {
+                script {
+                    echo "Tagging image with version: ${env.GIT_TAG}"
+                    sh """
+                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:${env.GIT_TAG}
+                    """
+                }
+            }
+        }
+
         stage('Push to ghcr.io') {
             when {
                 anyOf {
                     branch 'main'
                     expression { env.GIT_BRANCH == 'origin/main' }
                     expression { env.GIT_BRANCH == 'main' }
+                    // Also push when building from a Git tag
+                    expression { env.GIT_TAG != null && env.GIT_TAG != '' }
                 }
             }
             steps {
@@ -66,12 +92,24 @@ pipeline {
                     usernameVariable: 'GHCR_USER',
                     passwordVariable: 'GHCR_TOKEN'
                 )]) {
-                    sh """
-                        echo "\$GHCR_TOKEN" | docker login ghcr.io -u "\$GHCR_USER" --password-stdin
-                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                        docker push ${IMAGE_NAME}:latest
-                        docker logout ghcr.io
-                    """
+                    script {
+                        sh 'echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin'
+
+                        // Always push the build tag
+                        sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+
+                        // Push latest if on main branch
+                        if (env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'origin/main') {
+                            sh "docker push ${IMAGE_NAME}:latest"
+                        }
+
+                        // Push version tag if present
+                        if (env.GIT_TAG) {
+                            sh "docker push ${IMAGE_NAME}:${env.GIT_TAG}"
+                        }
+
+                        sh 'docker logout ghcr.io'
+                    }
                 }
             }
         }
@@ -81,14 +119,23 @@ pipeline {
         always {
             // Clean up local images
             sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
+            sh "docker rmi ${IMAGE_NAME}:latest || true"
+            script {
+                if (env.GIT_TAG) {
+                    sh "docker rmi ${IMAGE_NAME}:${env.GIT_TAG} || true"
+                }
+            }
             cleanWs()
         }
         success {
-            zulipSend(
-                stream: 'Jenkins',
-                topic: 'pos-cdc',
-                message: "✅ BUILD PASSED ${env.JOB_NAME} #${env.BUILD_NUMBER}\nYou can deploy now."
-            )
+            script {
+                def message = "✅ BUILD PASSED ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                if (env.GIT_TAG) {
+                    message += "\n🏷️ Version: ${env.GIT_TAG}"
+                }
+                message += "\nYou can deploy now."
+                zulipSend(stream: 'Jenkins', topic: 'pos-cdc', message: message)
+            }
         }
         failure {
             zulipSend(

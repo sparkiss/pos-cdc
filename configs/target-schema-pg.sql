@@ -4,886 +4,947 @@
 -- Excluded tables: recorded_order, lock, log
 -- Type conversions: DATETIME->TIMESTAMPTZ, TINYINT->SMALLINT, etc.
 
-CREATE TABLE IF NOT EXISTS "account" (
-  "ID" INTEGER NOT NULL,
-  "Account_ID" INTEGER NOT NULL,
-  "Name" varchar(64) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS account (
+  id INTEGER NOT NULL,
+  account_id INTEGER NOT NULL,
+  name varchar(64) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "adyen_notification" (
-  "ID" INTEGER NOT NULL,
-  "PspReference" varchar(50) NOT NULL,
-  "OrderId" INTEGER NOT NULL,
-  "Success" SMALLINT DEFAULT NULL,
-  "Response" varchar(2000) DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS adyen_notification (
+  id INTEGER NOT NULL,
+  pspreference varchar(50) NOT NULL,
+  orderid INTEGER NOT NULL,
+  success SMALLINT DEFAULT NULL,
+  response varchar(2000) DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "barbies" (
-  "Id" INTEGER NOT NULL,
-  "OrderId" INTEGER NOT NULL,
-  "CardNumber" varchar(50) NOT NULL,
-  "Points" INTEGER DEFAULT NULL,
-  "PointsEarned" INTEGER DEFAULT NULL,
-  "PointsValueRedeemed" NUMERIC(19,5) DEFAULT NULL,
-  "BirthdayBonusUsed" SMALLINT DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("Id"),
-  UNIQUE ("OrderId")
+CREATE TABLE IF NOT EXISTS barbies (
+  id INTEGER NOT NULL,
+  orderid INTEGER NOT NULL,
+  cardnumber varchar(50) NOT NULL,
+  points INTEGER DEFAULT NULL,
+  pointsearned INTEGER DEFAULT NULL,
+  pointsvalueredeemed NUMERIC(19,5) DEFAULT NULL,
+  birthdaybonusused SMALLINT DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (orderid)
 );
 
-CREATE TABLE IF NOT EXISTS "blobs" (
-  "IdWorkstation" INTEGER NOT NULL DEFAULT '0',
-  "Name" char(64) NOT NULL,
-  "Data" BYTEA,
-  "Hash" varchar(255) DEFAULT NULL,
-  "LastChange" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("Name","IdWorkstation")
+CREATE TABLE IF NOT EXISTS blobs (
+  idworkstation INTEGER NOT NULL DEFAULT '0',
+  name char(64) NOT NULL,
+  data BYTEA,
+  hash varchar(255) DEFAULT NULL,
+  lastchange TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (name,idworkstation)
 );
 
-CREATE TABLE IF NOT EXISTS "call_course" (
-  "ID" INTEGER NOT NULL,
-  "Table_ID" SMALLINT NOT NULL,
-  "Service" SMALLINT NOT NULL,
-  "TIMESTAMPTZ" TIMESTAMPTZ NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS call_course (
+  id INTEGER NOT NULL,
+  table_id SMALLINT NOT NULL,
+  service SMALLINT NOT NULL,
+  TIMESTAMPTZ TIMESTAMPTZ NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "cashdrawer" (
-  "ID" INTEGER NOT NULL,
-  "User_ID" INTEGER NOT NULL,
-  "OpenDate" TIMESTAMPTZ NOT NULL,
-  "Total" time NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS cashdrawer (
+  id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  opendate TIMESTAMPTZ NOT NULL,
+  total time NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "config" (
-  "IdConfig" INTEGER NOT NULL,
-  "IdParentConfig" INTEGER DEFAULT NULL,
-  "IdWorkstation" INTEGER NOT NULL,
-  "Name" varchar(100) DEFAULT NULL,
-  "Value" text,
-  "Note" varchar(1000) DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("IdConfig"),
-  UNIQUE ("IdConfig")
+CREATE TABLE IF NOT EXISTS config (
+  idconfig INTEGER NOT NULL,
+  idparentconfig INTEGER DEFAULT NULL,
+  idworkstation INTEGER NOT NULL,
+  name varchar(100) DEFAULT NULL,
+  value text,
+  note varchar(1000) DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (idconfig),
+  UNIQUE (idconfig)
 );
 
-CREATE TABLE IF NOT EXISTS "datacandy" (
-  "ID" INTEGER NOT NULL,
-  "Order_ID" INTEGER NOT NULL,
-  "CardID" varchar(24) NOT NULL,
-  "TransactionID" varchar(24) NOT NULL,
-  "Amount" NUMERIC(13,4) NOT NULL,
-  "PTS" NUMERIC(10,2) NOT NULL,
-  "Type" SMALLINT NOT NULL,
-  "TIMESTAMPTZ" TIMESTAMPTZ NOT NULL,
-  "PRG" SMALLINT NOT NULL,
-  "CTM" TEXT NOT NULL,
-  "RWEMSG" TEXT NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS datacandy (
+  id INTEGER NOT NULL,
+  order_id INTEGER NOT NULL,
+  cardid varchar(24) NOT NULL,
+  transactionid varchar(24) NOT NULL,
+  amount NUMERIC(13,4) NOT NULL,
+  pts NUMERIC(10,2) NOT NULL,
+  type SMALLINT NOT NULL,
+  TIMESTAMPTZ TIMESTAMPTZ NOT NULL,
+  prg SMALLINT NOT NULL,
+  ctm TEXT NOT NULL,
+  rwemsg TEXT NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "delivery_address" (
-  "ID" INTEGER NOT NULL,
-  "Type" SMALLINT NOT NULL DEFAULT '0',
-  "Address" varchar(256) NOT NULL,
-  "Corner" TEXT NOT NULL,
-  "City" TEXT NOT NULL,
-  "Zip" TEXT NOT NULL,
-  "Note" TEXT NOT NULL,
-  "Deleted" SMALLINT NOT NULL DEFAULT '0',
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS delivery_address (
+  id INTEGER NOT NULL,
+  type SMALLINT NOT NULL DEFAULT '0',
+  address varchar(256) NOT NULL,
+  corner TEXT NOT NULL,
+  city TEXT NOT NULL,
+  zip TEXT NOT NULL,
+  note TEXT NOT NULL,
+  deleted SMALLINT NOT NULL DEFAULT '0',
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "delivery_client" (
-  "ID" INTEGER NOT NULL,
-  "Phone_Number" varchar(11) NOT NULL,
-  "Profile_ID" varchar(32) NOT NULL,
-  "Fullname" TEXT NOT NULL,
-  "Attn" TEXT NOT NULL,
-  "Memo" TEXT NOT NULL,
-  "Note" TEXT NOT NULL,
-  "Email" varchar(128) NOT NULL,
-  "Flag" TEXT NOT NULL,
-  "Allergy" BIGINT NOT NULL DEFAULT '0',
-  "Created" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "Deleted" SMALLINT NOT NULL DEFAULT '0',
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS delivery_client (
+  id INTEGER NOT NULL,
+  phone_number varchar(11) NOT NULL,
+  profile_id varchar(32) NOT NULL,
+  fullname TEXT NOT NULL,
+  attn TEXT NOT NULL,
+  memo TEXT NOT NULL,
+  note TEXT NOT NULL,
+  email varchar(128) NOT NULL,
+  flag TEXT NOT NULL,
+  allergy BIGINT NOT NULL DEFAULT '0',
+  created TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted SMALLINT NOT NULL DEFAULT '0',
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "delivery_order" (
-  "ID" INTEGER NOT NULL,
-  "Client_ID" INTEGER NOT NULL,
-  "Address_ID" INTEGER NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS delivery_order (
+  id INTEGER NOT NULL,
+  client_id INTEGER NOT NULL,
+  address_id INTEGER NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "employeurd_user_mapping" (
-  "ID" INTEGER NOT NULL,
-  "UserID" INTEGER NOT NULL,
-  "ReferenceNumber" INTEGER NOT NULL DEFAULT '0',
-  "TeamLead" SMALLINT NOT NULL DEFAULT '0',
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS employeurd_user_mapping (
+  id INTEGER NOT NULL,
+  userid INTEGER NOT NULL,
+  referencenumber INTEGER NOT NULL DEFAULT '0',
+  teamlead SMALLINT NOT NULL DEFAULT '0',
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "first_nation_certificate" (
-  "ID" INTEGER NOT NULL,
-  "Order_ID" INTEGER NOT NULL,
-  "RegistrationNumber" varchar(50) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS first_nation_certificate (
+  id INTEGER NOT NULL,
+  order_id INTEGER NOT NULL,
+  registrationnumber varchar(50) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "geo_caching" (
-  "IdGeoCaching" INTEGER NOT NULL,
-  "APIProvider" varchar(45) DEFAULT NULL,
-  "RequestUriString" varchar(4000) DEFAULT NULL,
-  "RequestResponse" varchar(4000) DEFAULT NULL,
-  "DateCreated" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("IdGeoCaching"),
-  UNIQUE ("IdGeoCaching")
+CREATE TABLE IF NOT EXISTS geo_caching (
+  idgeocaching INTEGER NOT NULL,
+  apiprovider varchar(45) DEFAULT NULL,
+  requesturistring varchar(4000) DEFAULT NULL,
+  requestresponse varchar(4000) DEFAULT NULL,
+  datecreated TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (idgeocaching),
+  UNIQUE (idgeocaching)
 );
 
-CREATE TABLE IF NOT EXISTS "gggolf_member" (
-  "ID" INTEGER NOT NULL,
-  "MemberID" varchar(16) DEFAULT NULL,
-  "Name" varchar(256) DEFAULT NULL,
-  "Action" SMALLINT DEFAULT NULL,
-  "CreditLimit" NUMERIC(13,4) DEFAULT NULL,
-  "Category" INTEGER DEFAULT NULL,
-  "PriceList" INTEGER DEFAULT NULL,
-  "Tips" SMALLINT DEFAULT NULL,
-  "ServiceMandatory" SMALLINT DEFAULT NULL,
-  "Service1" SMALLINT DEFAULT NULL,
-  "Service2" SMALLINT DEFAULT NULL,
-  "Service3" SMALLINT DEFAULT NULL,
-  "Service4" SMALLINT DEFAULT NULL,
-  "Service5" SMALLINT DEFAULT NULL,
-  "AutoDiscount" SMALLINT DEFAULT NULL,
-  "ExpirationDate" TIMESTAMPTZ DEFAULT NULL,
-  "AutoDiscountCode" INTEGER DEFAULT NULL,
-  "UseLimit" SMALLINT DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS gggolf_member (
+  id INTEGER NOT NULL,
+  memberid varchar(16) DEFAULT NULL,
+  name varchar(256) DEFAULT NULL,
+  action SMALLINT DEFAULT NULL,
+  creditlimit NUMERIC(13,4) DEFAULT NULL,
+  category INTEGER DEFAULT NULL,
+  pricelist INTEGER DEFAULT NULL,
+  tips SMALLINT DEFAULT NULL,
+  servicemandatory SMALLINT DEFAULT NULL,
+  service1 SMALLINT DEFAULT NULL,
+  service2 SMALLINT DEFAULT NULL,
+  service3 SMALLINT DEFAULT NULL,
+  service4 SMALLINT DEFAULT NULL,
+  service5 SMALLINT DEFAULT NULL,
+  autodiscount SMALLINT DEFAULT NULL,
+  expirationdate TIMESTAMPTZ DEFAULT NULL,
+  autodiscountcode INTEGER DEFAULT NULL,
+  uselimit SMALLINT DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "gggolf_order_menu" (
-  "OrderId" INTEGER NOT NULL,
-  "MenuNumber" INTEGER NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("OrderId")
+CREATE TABLE IF NOT EXISTS gggolf_order_menu (
+  orderid INTEGER NOT NULL,
+  menunumber INTEGER NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (orderid)
 );
 
-CREATE TABLE IF NOT EXISTS "gggolf_station_menu_mapping" (
-  "Id" INTEGER NOT NULL,
-  "Serial" varchar(45) NOT NULL,
-  "MenuNumber" INTEGER NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("Id")
+CREATE TABLE IF NOT EXISTS gggolf_station_menu_mapping (
+  id INTEGER NOT NULL,
+  serial varchar(45) NOT NULL,
+  menunumber INTEGER NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "gift_card" (
-  "ID" INTEGER NOT NULL,
-  "ACTIVE" SMALLINT NOT NULL,
-  "CARD_NUMBER_MD5" char(32) NOT NULL,
-  "LAST_FOUR_DIGITS" char(4) NOT NULL,
-  "AMOUNT" NUMERIC(13,2) NOT NULL,
-  "ISSUED_BY" INTEGER NOT NULL,
-  "ISSUE_DATE" TIMESTAMPTZ NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS gift_card (
+  id INTEGER NOT NULL,
+  active SMALLINT NOT NULL,
+  card_number_md5 char(32) NOT NULL,
+  last_four_digits char(4) NOT NULL,
+  amount NUMERIC(13,2) NOT NULL,
+  issued_by INTEGER NOT NULL,
+  issue_date TIMESTAMPTZ NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "gift_card_sales" (
-  "ID" INTEGER NOT NULL,
-  "OrderItemId" INTEGER NOT NULL,
-  "IntegrationId" INTEGER NOT NULL DEFAULT '0',
-  "ActivationDateUtc" TIMESTAMPTZ DEFAULT NULL,
-  "ActivationInfo" varchar(500) DEFAULT NULL,
-  "Amount" NUMERIC(13,4) NOT NULL,
-  "CardNumber" varchar(50) DEFAULT NULL,
-  "Failed" SMALLINT NOT NULL DEFAULT '0',
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID"),
-  UNIQUE ("OrderItemId")
+CREATE TABLE IF NOT EXISTS gift_card_sales (
+  id INTEGER NOT NULL,
+  orderitemid INTEGER NOT NULL,
+  integrationid INTEGER NOT NULL DEFAULT '0',
+  activationdateutc TIMESTAMPTZ DEFAULT NULL,
+  activationinfo varchar(500) DEFAULT NULL,
+  amount NUMERIC(13,4) NOT NULL,
+  cardnumber varchar(50) DEFAULT NULL,
+  failed SMALLINT NOT NULL DEFAULT '0',
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (orderitemid)
 );
 
-CREATE TABLE IF NOT EXISTS "history_combine" (
-  "ID" INTEGER NOT NULL,
-  "ClientFrom" SMALLINT NOT NULL,
-  "Table_ID" SMALLINT NOT NULL,
-  "Delivery_ID" INTEGER NOT NULL DEFAULT '0',
-  "ItemList" TEXT NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS history_combine (
+  id INTEGER NOT NULL,
+  clientfrom SMALLINT NOT NULL,
+  table_id SMALLINT NOT NULL,
+  delivery_id INTEGER NOT NULL DEFAULT '0',
+  itemlist TEXT NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "history_separate" (
-  "ID" INTEGER NOT NULL,
-  "ClientFrom" SMALLINT NOT NULL,
-  "Table_ID" SMALLINT NOT NULL,
-  "Delivery_ID" INTEGER NOT NULL DEFAULT '0',
-  "ItemIDFrom" INTEGER NOT NULL,
-  "ItemIDTo" INTEGER NOT NULL,
-  "Action" SMALLINT NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS history_separate (
+  id INTEGER NOT NULL,
+  clientfrom SMALLINT NOT NULL,
+  table_id SMALLINT NOT NULL,
+  delivery_id INTEGER NOT NULL DEFAULT '0',
+  itemidfrom INTEGER NOT NULL,
+  itemidto INTEGER NOT NULL,
+  action SMALLINT NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "inventory" (
-  "ID" INTEGER NOT NULL,
-  "UID" INTEGER NOT NULL,
-  "QTY" NUMERIC(13,4) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS inventory (
+  id INTEGER NOT NULL,
+  uid INTEGER NOT NULL,
+  qty NUMERIC(13,4) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "inventory_in_out" (
-  "ID" INTEGER NOT NULL,
-  "UID" INTEGER NOT NULL,
-  "QTY" NUMERIC(13,4) NOT NULL,
-  "Date" TIMESTAMPTZ NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS inventory_in_out (
+  id INTEGER NOT NULL,
+  uid INTEGER NOT NULL,
+  qty NUMERIC(13,4) NOT NULL,
+  date TIMESTAMPTZ NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "itemweight" (
-  "Id" INTEGER NOT NULL,
-  "ItemId" INTEGER NOT NULL,
-  "GrossWeight" NUMERIC(10,4) NOT NULL,
-  "TareWeight" NUMERIC(10,4) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("Id")
+CREATE TABLE IF NOT EXISTS itemweight (
+  id INTEGER NOT NULL,
+  itemid INTEGER NOT NULL,
+  grossweight NUMERIC(10,4) NOT NULL,
+  tareweight NUMERIC(10,4) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "liquor" (
-  "ID" INTEGER NOT NULL,
-  "request_id" INTEGER NOT NULL,
-  "device_id" INTEGER NOT NULL DEFAULT '0',
-  "Item_uid" INTEGER NOT NULL,
-  "field_device_type" SMALLINT NOT NULL,
-  "pour" INTEGER NOT NULL DEFAULT '0',
-  "pour_level" SMALLINT NOT NULL DEFAULT '0',
-  "device_time" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "virtual_bar_id" SMALLINT NOT NULL DEFAULT '0',
-  "incomplete" SMALLINT NOT NULL DEFAULT '0',
-  "type" SMALLINT NOT NULL,
-  "IP" SMALLINT NOT NULL DEFAULT '0',
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS liquor (
+  id INTEGER NOT NULL,
+  request_id INTEGER NOT NULL,
+  device_id INTEGER NOT NULL DEFAULT '0',
+  item_uid INTEGER NOT NULL,
+  field_device_type SMALLINT NOT NULL,
+  pour INTEGER NOT NULL DEFAULT '0',
+  pour_level SMALLINT NOT NULL DEFAULT '0',
+  device_time TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  virtual_bar_id SMALLINT NOT NULL DEFAULT '0',
+  incomplete SMALLINT NOT NULL DEFAULT '0',
+  type SMALLINT NOT NULL,
+  ip SMALLINT NOT NULL DEFAULT '0',
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "live_cart_info" (
-  "id_live_cart_info" INTEGER NOT NULL,
-  "serial" varchar(45) NOT NULL,
-  "cart_json" TEXT NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("id_live_cart_info"),
-  UNIQUE ("serial")
+CREATE TABLE IF NOT EXISTS live_cart_info (
+  id_live_cart_info INTEGER NOT NULL,
+  serial varchar(45) NOT NULL,
+  cart_json TEXT NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id_live_cart_info),
+  UNIQUE (serial)
 );
 
-CREATE TABLE IF NOT EXISTS "menu" (
-  "IdMenu" INTEGER NOT NULL,
-  "XMLMenu" TEXT NOT NULL,
-  "Type" varchar(45) DEFAULT NULL,
-  "LastChange" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "DateCreated" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "Active" BOOLEAN DEFAULT NULL,
-  "Checksum" varchar(100) DEFAULT NULL,
-  "IdWorkstation" INTEGER NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("IdMenu"),
-  UNIQUE ("Active")
+CREATE TABLE IF NOT EXISTS menu (
+  idmenu INTEGER NOT NULL,
+  xmlmenu TEXT NOT NULL,
+  type varchar(45) DEFAULT NULL,
+  lastchange TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  datecreated TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  active BOOLEAN DEFAULT NULL,
+  checksum varchar(100) DEFAULT NULL,
+  idworkstation INTEGER NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (idmenu),
+  UNIQUE (active)
 );
 
-CREATE TABLE IF NOT EXISTS "message_queue" (
-  "Id" INTEGER NOT NULL,
-  "Type" INTEGER DEFAULT NULL,
-  "TIMESTAMPTZ" TIMESTAMPTZ DEFAULT NULL,
-  "Data" TEXT,
-  "Attempts" INTEGER DEFAULT NULL,
-  "TargetQueueName" varchar(256) NOT NULL,
-  "UniqueId" varchar(256) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("Id")
+CREATE TABLE IF NOT EXISTS message_queue (
+  id INTEGER NOT NULL,
+  type INTEGER DEFAULT NULL,
+  TIMESTAMPTZ TIMESTAMPTZ DEFAULT NULL,
+  data TEXT,
+  attempts INTEGER DEFAULT NULL,
+  targetqueuename varchar(256) NOT NULL,
+  uniqueid varchar(256) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "message_queue_configuration" (
-  "Id" INTEGER NOT NULL,
-  "TargetQueueName" varchar(256) NOT NULL,
-  "QueueUrl" varchar(1024) DEFAULT NULL,
-  "AccessKey" varchar(256) DEFAULT NULL,
-  "SecretKey" varchar(256) DEFAULT NULL,
-  "ServiceUrl" varchar(256) DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("Id"),
-  UNIQUE ("TargetQueueName")
+CREATE TABLE IF NOT EXISTS message_queue_configuration (
+  id INTEGER NOT NULL,
+  targetqueuename varchar(256) NOT NULL,
+  queueurl varchar(1024) DEFAULT NULL,
+  accesskey varchar(256) DEFAULT NULL,
+  secretkey varchar(256) DEFAULT NULL,
+  serviceurl varchar(256) DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (targetqueuename)
 );
 
-CREATE TABLE IF NOT EXISTS "mev_transaction" (
-  "TransactionId" INTEGER NOT NULL,
-  "OrderId" INTEGER NOT NULL,
-  "UserId" INTEGER NOT NULL,
-  "IdApprl" varchar(14) DEFAULT NULL,
-  "TypTrans" varchar(4) DEFAULT NULL,
-  "ModTrans" varchar(4) DEFAULT NULL,
-  "ModImpr" varchar(4) DEFAULT NULL,
-  "Status" varchar(12) DEFAULT NULL,
-  "TransactionJson" text,
-  "PsiNoTrans" varchar(19) DEFAULT NULL,
-  "PsiDatTrans" TIMESTAMPTZ DEFAULT NULL,
-  "LotNumber" varchar(10) DEFAULT NULL,
-  "LotDate" TIMESTAMPTZ DEFAULT NULL,
-  "QRCodeUrl" text,
-  "DateCreated" TIMESTAMPTZ DEFAULT NULL,
-  "DateProcessed" TIMESTAMPTZ DEFAULT NULL,
-  "NoTrans" varchar(50) DEFAULT NULL,
-  "Duration" INTEGER DEFAULT NULL,
-  "FormImpr" varchar(4) DEFAULT NULL,
-  "Amount" NUMERIC(13,4) DEFAULT NULL,
-  "Reason" TEXT,
-  "DatTrans" TIMESTAMPTZ DEFAULT NULL,
-  "ModPai" varchar(3) DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("TransactionId")
+CREATE TABLE IF NOT EXISTS mev_transaction (
+  transactionid INTEGER NOT NULL,
+  orderid INTEGER NOT NULL,
+  userid INTEGER NOT NULL,
+  idapprl varchar(14) DEFAULT NULL,
+  typtrans varchar(4) DEFAULT NULL,
+  modtrans varchar(4) DEFAULT NULL,
+  modimpr varchar(4) DEFAULT NULL,
+  status varchar(12) DEFAULT NULL,
+  transactionjson text,
+  psinotrans varchar(19) DEFAULT NULL,
+  psidattrans TIMESTAMPTZ DEFAULT NULL,
+  lotnumber varchar(10) DEFAULT NULL,
+  lotdate TIMESTAMPTZ DEFAULT NULL,
+  qrcodeurl text,
+  datecreated TIMESTAMPTZ DEFAULT NULL,
+  dateprocessed TIMESTAMPTZ DEFAULT NULL,
+  notrans varchar(50) DEFAULT NULL,
+  duration INTEGER DEFAULT NULL,
+  formimpr varchar(4) DEFAULT NULL,
+  amount NUMERIC(13,4) DEFAULT NULL,
+  reason TEXT,
+  dattrans TIMESTAMPTZ DEFAULT NULL,
+  modpai varchar(3) DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (transactionid)
 );
 
-CREATE TABLE IF NOT EXISTS "mews_account_mapping" (
-  "mews_account_mapping_id" INTEGER NOT NULL,
-  "account_id" INTEGER NOT NULL,
-  "mews_account" varchar(100) NOT NULL,
-  "mews_account_id" varchar(50) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("mews_account_mapping_id"),
-  UNIQUE ("account_id")
+CREATE TABLE IF NOT EXISTS mews_account_mapping (
+  mews_account_mapping_id INTEGER NOT NULL,
+  account_id INTEGER NOT NULL,
+  mews_account varchar(100) NOT NULL,
+  mews_account_id varchar(50) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (mews_account_mapping_id),
+  UNIQUE (account_id)
 );
 
-CREATE TABLE IF NOT EXISTS "mews_tax_mapping" (
-  "mews_tax_mapping_id" INTEGER NOT NULL,
-  "tax_id" SMALLINT NOT NULL,
-  "mews_tax_name" varchar(50) NOT NULL,
-  "mews_tax_code" varchar(50) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("mews_tax_mapping_id"),
-  UNIQUE ("tax_id")
+CREATE TABLE IF NOT EXISTS mews_tax_mapping (
+  mews_tax_mapping_id INTEGER NOT NULL,
+  tax_id SMALLINT NOT NULL,
+  mews_tax_name varchar(50) NOT NULL,
+  mews_tax_code varchar(50) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (mews_tax_mapping_id),
+  UNIQUE (tax_id)
 );
 
-CREATE TABLE IF NOT EXISTS "orders" (
-  "ID" INTEGER NOT NULL,
-  "Date" TIMESTAMPTZ NOT NULL,
-  "DateClose" TIMESTAMPTZ NOT NULL,
-  "DatePreorder" TIMESTAMPTZ DEFAULT NULL,
-  "Table_ID" SMALLINT NOT NULL DEFAULT '0',
-  "Client_ID" SMALLINT NOT NULL,
-  "User_ID" INTEGER NOT NULL,
-  "Delivery_ID" INTEGER NOT NULL,
-  "SubTotal" NUMERIC(13,4) NOT NULL,
-  "Tax1" NUMERIC(13,4) NOT NULL,
-  "Tax2" NUMERIC(13,4) NOT NULL,
-  "Tax3" NUMERIC(13,4) NOT NULL,
-  "Tax4" NUMERIC(13,4) NOT NULL,
-  "Tax5" NUMERIC(13,4) NOT NULL,
-  "Tax6" NUMERIC(13,4) NOT NULL,
-  "NonTaxable" NUMERIC(13,4) NOT NULL,
-  "NonSale" NUMERIC(13,4) NOT NULL,
-  "Tax_Rounding" NUMERIC(13,4) NOT NULL,
-  "Total" NUMERIC(13,4) NOT NULL,
-  "Device" SMALLINT NOT NULL DEFAULT '0',
-  "Client_Name" varchar(48) NOT NULL,
-  "Profile_ID" varchar(32) NOT NULL,
-  "Bill" SMALLINT NOT NULL DEFAULT '0',
-  "Completed" SMALLINT NOT NULL DEFAULT '0',
-  "Closed" SMALLINT NOT NULL DEFAULT '0',
-  "Prepared" SMALLINT NOT NULL,
-  "Close_Date" TIMESTAMPTZ DEFAULT NULL,
-  "Note" TEXT NOT NULL,
-  "Reason" TEXT NOT NULL,
-  "Void_By" INTEGER NOT NULL,
-  "IP" SMALLINT NOT NULL DEFAULT '0',
-  "Deleted" SMALLINT NOT NULL DEFAULT '0',
-  "Online_Client_UID" varchar(50) DEFAULT NULL,
-  "License" varchar(20) DEFAULT NULL,
-  "IsPreAuthorized" SMALLINT NOT NULL DEFAULT '0',
-  "EdgeFee" NUMERIC(13,4) NOT NULL DEFAULT '0.0000',
-  "CloseDayID" varchar(100) DEFAULT NULL,
-  "MEVTransactionDate" TIMESTAMPTZ DEFAULT NULL,
-  "RefundForOrderId" INTEGER DEFAULT NULL,
-  "Updated_At" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "External_Id" varchar(50) DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS orders (
+  id INTEGER NOT NULL,
+  date TIMESTAMPTZ NOT NULL,
+  dateclose TIMESTAMPTZ NOT NULL,
+  datepreorder TIMESTAMPTZ DEFAULT NULL,
+  table_id SMALLINT NOT NULL DEFAULT '0',
+  client_id SMALLINT NOT NULL,
+  user_id INTEGER NOT NULL,
+  delivery_id INTEGER NOT NULL,
+  subtotal NUMERIC(13,4) NOT NULL,
+  tax1 NUMERIC(13,4) NOT NULL,
+  tax2 NUMERIC(13,4) NOT NULL,
+  tax3 NUMERIC(13,4) NOT NULL,
+  tax4 NUMERIC(13,4) NOT NULL,
+  tax5 NUMERIC(13,4) NOT NULL,
+  tax6 NUMERIC(13,4) NOT NULL,
+  nontaxable NUMERIC(13,4) NOT NULL,
+  nonsale NUMERIC(13,4) NOT NULL,
+  tax_rounding NUMERIC(13,4) NOT NULL,
+  total NUMERIC(13,4) NOT NULL,
+  device SMALLINT NOT NULL DEFAULT '0',
+  client_name varchar(48) NOT NULL,
+  profile_id varchar(32) NOT NULL,
+  bill SMALLINT NOT NULL DEFAULT '0',
+  completed SMALLINT NOT NULL DEFAULT '0',
+  closed SMALLINT NOT NULL DEFAULT '0',
+  prepared SMALLINT NOT NULL,
+  close_date TIMESTAMPTZ DEFAULT NULL,
+  note TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  void_by INTEGER NOT NULL,
+  ip SMALLINT NOT NULL DEFAULT '0',
+  deleted SMALLINT NOT NULL DEFAULT '0',
+  online_client_uid varchar(50) DEFAULT NULL,
+  license varchar(20) DEFAULT NULL,
+  ispreauthorized SMALLINT NOT NULL DEFAULT '0',
+  edgefee NUMERIC(13,4) NOT NULL DEFAULT '0.0000',
+  closedayid varchar(100) DEFAULT NULL,
+  mevtransactiondate TIMESTAMPTZ DEFAULT NULL,
+  refundfororderid INTEGER DEFAULT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  external_id varchar(50) DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "orders_combine" (
-  "ID" INTEGER NOT NULL,
-  "IDFrom" INTEGER NOT NULL,
-  "IDTo" INTEGER NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS orders_combine (
+  id INTEGER NOT NULL,
+  idfrom INTEGER NOT NULL,
+  idto INTEGER NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "orders_discount" (
-  "ID" INTEGER NOT NULL,
-  "From_ID" INTEGER NOT NULL,
-  "From_Type" SMALLINT NOT NULL,
-  "Discount_uid" INTEGER NOT NULL,
-  "Type" SMALLINT NOT NULL,
-  "Value" NUMERIC(13,4) NOT NULL,
-  "Name" varchar(32) NOT NULL,
-  "Discount_User_ID" INTEGER NOT NULL,
-  "Price" NUMERIC(13,4) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS orders_discount (
+  id INTEGER NOT NULL,
+  from_id INTEGER NOT NULL,
+  from_type SMALLINT NOT NULL,
+  discount_uid INTEGER NOT NULL,
+  type SMALLINT NOT NULL,
+  value NUMERIC(13,4) NOT NULL,
+  name varchar(32) NOT NULL,
+  discount_user_id INTEGER NOT NULL,
+  price NUMERIC(13,4) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "orders_ingredient" (
-  "ID" INTEGER NOT NULL,
-  "Item_ID" INTEGER NOT NULL DEFAULT '0',
-  "Ingredient_uid" INTEGER NOT NULL,
-  "Change_uid" INTEGER NOT NULL,
-  "Account" INTEGER NOT NULL,
-  "Name" varchar(100) NOT NULL,
-  "DefaultName" varchar(100) NOT NULL DEFAULT '',
-  "Price" NUMERIC(13,4) NOT NULL,
-  "PriceEdge" NUMERIC(13,4) NOT NULL,
-  "Tax_Type" SMALLINT NOT NULL DEFAULT '31',
-  "Qty" SMALLINT NOT NULL DEFAULT '1',
-  "Modifier" SMALLINT NOT NULL,
-  "Modified" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "Deleted" SMALLINT NOT NULL DEFAULT '0',
-  "PriceLock" SMALLINT NOT NULL DEFAULT '0',
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS orders_ingredient (
+  id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL DEFAULT '0',
+  ingredient_uid INTEGER NOT NULL,
+  change_uid INTEGER NOT NULL,
+  account INTEGER NOT NULL,
+  name varchar(100) NOT NULL,
+  defaultname varchar(100) NOT NULL DEFAULT '',
+  price NUMERIC(13,4) NOT NULL,
+  priceedge NUMERIC(13,4) NOT NULL,
+  tax_type SMALLINT NOT NULL DEFAULT '31',
+  qty SMALLINT NOT NULL DEFAULT '1',
+  modifier SMALLINT NOT NULL,
+  modified TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted SMALLINT NOT NULL DEFAULT '0',
+  pricelock SMALLINT NOT NULL DEFAULT '0',
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "orders_item" (
-  "ID" INTEGER NOT NULL,
-  "Order_ID" INTEGER NOT NULL DEFAULT '0',
-  "Item_uid" INTEGER NOT NULL,
-  "Account" INTEGER NOT NULL,
-  "Name" varchar(100) NOT NULL,
-  "DefaultName" varchar(100) NOT NULL DEFAULT '',
-  "Qty" SMALLINT NOT NULL DEFAULT '1',
-  "Unit_Qty" NUMERIC(13,4) NOT NULL DEFAULT '1.0000',
-  "Unit_Type" SMALLINT NOT NULL DEFAULT '0',
-  "Price" NUMERIC(13,4) NOT NULL,
-  "PriceEdge" NUMERIC(13,4) NOT NULL,
-  "Tax_Type" SMALLINT NOT NULL DEFAULT '31',
-  "SplitID" INTEGER NOT NULL DEFAULT '0',
-  "SplitBy" SMALLINT NOT NULL DEFAULT '1',
-  "Category" varchar(50) NOT NULL DEFAULT '',
-  "Combo" INTEGER NOT NULL DEFAULT '0',
-  "Service" SMALLINT NOT NULL DEFAULT '0',
-  "Type" SMALLINT NOT NULL DEFAULT '0',
-  "Printed" SMALLINT NOT NULL DEFAULT '0',
-  "PrintDate" TIMESTAMPTZ NOT NULL,
-  "Bill" SMALLINT NOT NULL DEFAULT '0',
-  "Note" TEXT NOT NULL,
-  "Reason" TEXT NOT NULL,
-  "Void_By" INTEGER NOT NULL,
-  "Modified" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "Deleted" SMALLINT NOT NULL DEFAULT '0',
-  "IsPreAuthorized" SMALLINT NOT NULL DEFAULT '0',
-  "PriceLock" SMALLINT NOT NULL DEFAULT '0',
-  "ActivitySubSector" varchar(3) NOT NULL DEFAULT '',
-  "MealCount" NUMERIC(13,4) DEFAULT NULL,
-  "CategoryHierarchy" TEXT NOT NULL,
-  "OriginalPrice" NUMERIC(13,4) DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS orders_item (
+  id INTEGER NOT NULL,
+  order_id INTEGER NOT NULL DEFAULT '0',
+  item_uid INTEGER NOT NULL,
+  account INTEGER NOT NULL,
+  name varchar(100) NOT NULL,
+  defaultname varchar(100) NOT NULL DEFAULT '',
+  qty SMALLINT NOT NULL DEFAULT '1',
+  unit_qty NUMERIC(13,4) NOT NULL DEFAULT '1.0000',
+  unit_type SMALLINT NOT NULL DEFAULT '0',
+  price NUMERIC(13,4) NOT NULL,
+  priceedge NUMERIC(13,4) NOT NULL,
+  tax_type SMALLINT NOT NULL DEFAULT '31',
+  splitid INTEGER NOT NULL DEFAULT '0',
+  splitby SMALLINT NOT NULL DEFAULT '1',
+  category varchar(50) NOT NULL DEFAULT '',
+  combo INTEGER NOT NULL DEFAULT '0',
+  service SMALLINT NOT NULL DEFAULT '0',
+  type SMALLINT NOT NULL DEFAULT '0',
+  printed SMALLINT NOT NULL DEFAULT '0',
+  printdate TIMESTAMPTZ NOT NULL,
+  bill SMALLINT NOT NULL DEFAULT '0',
+  note TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  void_by INTEGER NOT NULL,
+  modified TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted SMALLINT NOT NULL DEFAULT '0',
+  ispreauthorized SMALLINT NOT NULL DEFAULT '0',
+  pricelock SMALLINT NOT NULL DEFAULT '0',
+  activitysubsector varchar(3) NOT NULL DEFAULT '',
+  mealcount NUMERIC(13,4) DEFAULT NULL,
+  categoryhierarchy TEXT NOT NULL,
+  originalprice NUMERIC(13,4) DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "orders_option" (
-  "ID" INTEGER NOT NULL,
-  "Item_ID" INTEGER NOT NULL DEFAULT '0',
-  "Option_uid" INTEGER NOT NULL,
-  "Account" INTEGER NOT NULL,
-  "Index_ID" SMALLINT NOT NULL,
-  "Value" varchar(100) NOT NULL,
-  "DefaultName" varchar(100) NOT NULL DEFAULT '',
-  "Price" NUMERIC(13,4) NOT NULL,
-  "PriceEdge" NUMERIC(13,4) NOT NULL,
-  "Tax_Type" SMALLINT NOT NULL DEFAULT '31',
-  "Qty" SMALLINT NOT NULL,
-  "Type" SMALLINT NOT NULL,
-  "Modified" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "PriceLock" SMALLINT NOT NULL DEFAULT '0',
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS orders_option (
+  id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL DEFAULT '0',
+  option_uid INTEGER NOT NULL,
+  account INTEGER NOT NULL,
+  index_id SMALLINT NOT NULL,
+  value varchar(100) NOT NULL,
+  defaultname varchar(100) NOT NULL DEFAULT '',
+  price NUMERIC(13,4) NOT NULL,
+  priceedge NUMERIC(13,4) NOT NULL,
+  tax_type SMALLINT NOT NULL DEFAULT '31',
+  qty SMALLINT NOT NULL,
+  type SMALLINT NOT NULL,
+  modified TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  pricelock SMALLINT NOT NULL DEFAULT '0',
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "orders_payment" (
-  "ID" INTEGER NOT NULL,
-  "Order_ID" INTEGER NOT NULL,
-  "Method" varchar(20) NOT NULL,
-  "Payment" NUMERIC(13,4) NOT NULL,
-  "Tip" NUMERIC(13,4) NOT NULL,
-  "Balance" NUMERIC(13,4) NOT NULL,
-  "Card_Number" varchar(16) NOT NULL,
-  "Device" SMALLINT NOT NULL,
-  "Language" SMALLINT NOT NULL,
-  "Card_Entry_Mode" SMALLINT NOT NULL DEFAULT '0',
-  "Approval_Code" varchar(10) NOT NULL,
-  "Message" TEXT NOT NULL,
-  "Date" TIMESTAMPTZ NOT NULL,
-  "ConversionRate" NUMERIC(13,4) NOT NULL DEFAULT '1.0000',
-  "Currency" varchar(3) NOT NULL,
-  "Deleted" SMALLINT NOT NULL DEFAULT '0',
-  "RefCode" varchar(100) NOT NULL DEFAULT '',
-  "Type" INTEGER NOT NULL DEFAULT '0',
-  "HostCode" varchar(100) NOT NULL DEFAULT '',
-  "Edge" INTEGER NOT NULL,
-  "Adjusted" SMALLINT NOT NULL,
-  "PinpadTransaction" varchar(100) DEFAULT NULL,
-  "BatchId" varchar(256) DEFAULT NULL,
-  "ProcessorName" varchar(256) DEFAULT NULL,
-  "CardReader" varchar(256) DEFAULT NULL,
-  "GUID" varchar(50) DEFAULT NULL,
-  "TerminalID" varchar(100) DEFAULT NULL,
-  "TerminalName" varchar(255) DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID"),
-  UNIQUE ("GUID")
+CREATE TABLE IF NOT EXISTS orders_payment (
+  id INTEGER NOT NULL,
+  order_id INTEGER NOT NULL,
+  method varchar(20) NOT NULL,
+  payment NUMERIC(13,4) NOT NULL,
+  tip NUMERIC(13,4) NOT NULL,
+  balance NUMERIC(13,4) NOT NULL,
+  card_number varchar(16) NOT NULL,
+  device SMALLINT NOT NULL,
+  language SMALLINT NOT NULL,
+  card_entry_mode SMALLINT NOT NULL DEFAULT '0',
+  approval_code varchar(10) NOT NULL,
+  message TEXT NOT NULL,
+  date TIMESTAMPTZ NOT NULL,
+  conversionrate NUMERIC(13,4) NOT NULL DEFAULT '1.0000',
+  currency varchar(3) NOT NULL,
+  deleted SMALLINT NOT NULL DEFAULT '0',
+  refcode varchar(100) NOT NULL DEFAULT '',
+  type INTEGER NOT NULL DEFAULT '0',
+  hostcode varchar(100) NOT NULL DEFAULT '',
+  edge INTEGER NOT NULL,
+  adjusted SMALLINT NOT NULL,
+  pinpadtransaction varchar(100) DEFAULT NULL,
+  batchid varchar(256) DEFAULT NULL,
+  processorname varchar(256) DEFAULT NULL,
+  cardreader varchar(256) DEFAULT NULL,
+  guid varchar(50) DEFAULT NULL,
+  terminalid varchar(100) DEFAULT NULL,
+  terminalname varchar(255) DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (guid)
 );
 
-CREATE TABLE IF NOT EXISTS "orders_pre_payment" (
-  "ID" INTEGER NOT NULL,
-  "Order_ID" INTEGER DEFAULT NULL,
-  "Transaction_ID" varchar(256) DEFAULT NULL,
-  "Sequence" INTEGER DEFAULT NULL,
-  "Method" varchar(100) DEFAULT NULL,
-  "Operation" varchar(100) DEFAULT NULL,
-  "Ammount" varchar(256) DEFAULT NULL,
-  "TransactionDate" TIMESTAMPTZ DEFAULT NULL,
-  "Active" SMALLINT DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS orders_pre_payment (
+  id INTEGER NOT NULL,
+  order_id INTEGER DEFAULT NULL,
+  transaction_id varchar(256) DEFAULT NULL,
+  sequence INTEGER DEFAULT NULL,
+  method varchar(100) DEFAULT NULL,
+  operation varchar(100) DEFAULT NULL,
+  ammount varchar(256) DEFAULT NULL,
+  transactiondate TIMESTAMPTZ DEFAULT NULL,
+  active SMALLINT DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "orders_ref" (
-  "ID" INTEGER NOT NULL,
-  "Order_ID" INTEGER NOT NULL,
-  "MEV_REF" INTEGER NOT NULL,
-  "MEV_ADDI" INTEGER NOT NULL,
-  "MEV_SUB" NUMERIC(13,4) NOT NULL,
-  "MEV_DATE" TIMESTAMPTZ NOT NULL,
-  "MEV_SUB_PREV" NUMERIC(13,4) NOT NULL,
-  "MEV_DATE_PREV" TIMESTAMPTZ NOT NULL,
-  "Deleted" SMALLINT NOT NULL,
-  "CreatedDate" TIMESTAMPTZ DEFAULT NULL,
-  "RefDatTrans" TIMESTAMPTZ DEFAULT NULL,
-  "PrintDatTrans" TIMESTAMPTZ DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS orders_ref (
+  id INTEGER NOT NULL,
+  order_id INTEGER NOT NULL,
+  mev_ref INTEGER NOT NULL,
+  mev_addi INTEGER NOT NULL,
+  mev_sub NUMERIC(13,4) NOT NULL,
+  mev_date TIMESTAMPTZ NOT NULL,
+  mev_sub_prev NUMERIC(13,4) NOT NULL,
+  mev_date_prev TIMESTAMPTZ NOT NULL,
+  deleted SMALLINT NOT NULL,
+  createddate TIMESTAMPTZ DEFAULT NULL,
+  refdattrans TIMESTAMPTZ DEFAULT NULL,
+  printdattrans TIMESTAMPTZ DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "orders_transfer_ownership" (
-  "ID" INTEGER NOT NULL,
-  "Order_ID" INTEGER NOT NULL,
-  "User_IDBy" INTEGER NOT NULL,
-  "User_IDFrom" INTEGER NOT NULL,
-  "User_IDTo" INTEGER NOT NULL,
-  "Date" TIMESTAMPTZ NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS orders_transfer_ownership (
+  id INTEGER NOT NULL,
+  order_id INTEGER NOT NULL,
+  user_idby INTEGER NOT NULL,
+  user_idfrom INTEGER NOT NULL,
+  user_idto INTEGER NOT NULL,
+  date TIMESTAMPTZ NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "orders_transfer_table" (
-  "ID" INTEGER NOT NULL,
-  "Order_ID" INTEGER NOT NULL,
-  "User_ID_By" INTEGER NOT NULL,
-  "Table_ID_From" SMALLINT NOT NULL,
-  "Table_ID_To" SMALLINT NOT NULL,
-  "Date" TIMESTAMPTZ NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS orders_transfer_table (
+  id INTEGER NOT NULL,
+  order_id INTEGER NOT NULL,
+  user_id_by INTEGER NOT NULL,
+  table_id_from SMALLINT NOT NULL,
+  table_id_to SMALLINT NOT NULL,
+  date TIMESTAMPTZ NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "payout" (
-  "ID" INTEGER NOT NULL,
-  "SupplierID" INTEGER NOT NULL,
-  "Description" TEXT NOT NULL,
-  "Amount" NUMERIC(13,4) NOT NULL,
-  "Date" TIMESTAMPTZ NOT NULL,
-  "User_ID" INTEGER NOT NULL,
-  "Reason" TEXT NOT NULL,
-  "Void_By" INTEGER NOT NULL,
-  "Deleted" SMALLINT NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS payout (
+  id INTEGER NOT NULL,
+  supplierid INTEGER NOT NULL,
+  description TEXT NOT NULL,
+  amount NUMERIC(13,4) NOT NULL,
+  date TIMESTAMPTZ NOT NULL,
+  user_id INTEGER NOT NULL,
+  reason TEXT NOT NULL,
+  void_by INTEGER NOT NULL,
+  deleted SMALLINT NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "payout_supplier" (
-  "ID" INTEGER NOT NULL,
-  "Name" varchar(64) NOT NULL,
-  "Deleted" SMALLINT NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS payout_supplier (
+  id INTEGER NOT NULL,
+  name varchar(64) NOT NULL,
+  deleted SMALLINT NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "pos_version" (
-  "Id_POS_Version" INTEGER NOT NULL,
-  "Serial" varchar(45) DEFAULT NULL,
-  "Type" varchar(20) DEFAULT NULL,
-  "Version" varchar(20) DEFAULT NULL,
-  "Date_Created" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("Id_POS_Version"),
-  UNIQUE ("Id_POS_Version")
+CREATE TABLE IF NOT EXISTS pos_version (
+  id_pos_version INTEGER NOT NULL,
+  serial varchar(45) DEFAULT NULL,
+  type varchar(20) DEFAULT NULL,
+  version varchar(20) DEFAULT NULL,
+  date_created TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id_pos_version),
+  UNIQUE (id_pos_version)
 );
 
-CREATE TABLE IF NOT EXISTS "processor_pendingoperation" (
-  "Id" INTEGER NOT NULL,
-  "OrderId" INTEGER NOT NULL,
-  "OperationData" text NOT NULL,
-  "OperationId" varchar(50) NOT NULL,
-  "ProcessorName" varchar(50) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("Id")
+CREATE TABLE IF NOT EXISTS processor_pendingoperation (
+  id INTEGER NOT NULL,
+  orderid INTEGER NOT NULL,
+  operationdata text NOT NULL,
+  operationid varchar(50) NOT NULL,
+  processorname varchar(50) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "punch_clock" (
-  "ID" INTEGER NOT NULL,
-  "User_ID" INTEGER NOT NULL,
-  "PunchIn" TIMESTAMPTZ NOT NULL,
-  "PunchOut" TIMESTAMPTZ NOT NULL,
-  "Salary" NUMERIC(13,2) DEFAULT '0.00',
-  "IsManual" SMALLINT NOT NULL,
-  "Note" TEXT NOT NULL,
-  "users_role_id" INTEGER DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS punch_clock (
+  id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  punchin TIMESTAMPTZ NOT NULL,
+  punchout TIMESTAMPTZ NOT NULL,
+  salary NUMERIC(13,2) DEFAULT '0.00',
+  ismanual SMALLINT NOT NULL,
+  note TEXT NOT NULL,
+  users_role_id INTEGER DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "reservation" (
-  "ID" INTEGER NOT NULL,
-  "Date" TIMESTAMPTZ NOT NULL,
-  "DateEnd" TIMESTAMPTZ NOT NULL,
-  "FirstName" varchar(64) DEFAULT NULL,
-  "LastName" varchar(64) DEFAULT NULL,
-  "PhoneNumber" varchar(16) DEFAULT NULL,
-  "Email" varchar(128) DEFAULT NULL,
-  "Guest" SMALLINT NOT NULL,
-  "Table_ID" SMALLINT NOT NULL,
-  "Note" TEXT,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS reservation (
+  id INTEGER NOT NULL,
+  date TIMESTAMPTZ NOT NULL,
+  dateend TIMESTAMPTZ NOT NULL,
+  firstname varchar(64) DEFAULT NULL,
+  lastname varchar(64) DEFAULT NULL,
+  phonenumber varchar(16) DEFAULT NULL,
+  email varchar(128) DEFAULT NULL,
+  guest SMALLINT NOT NULL,
+  table_id SMALLINT NOT NULL,
+  note TEXT,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "reservation_waitinglist" (
-  "ID" INTEGER NOT NULL,
-  "Date" TIMESTAMPTZ NOT NULL,
-  "Name" varchar(128) NOT NULL,
-  "Guest" SMALLINT NOT NULL,
-  "Note" TEXT,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS reservation_waitinglist (
+  id INTEGER NOT NULL,
+  date TIMESTAMPTZ NOT NULL,
+  name varchar(128) NOT NULL,
+  guest SMALLINT NOT NULL,
+  note TEXT,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "schedule" (
-  "ID" INTEGER NOT NULL,
-  "DateFrom" TIMESTAMPTZ NOT NULL,
-  "TimeTo" time NOT NULL,
-  "User_ID" INTEGER NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS schedule (
+  id INTEGER NOT NULL,
+  datefrom TIMESTAMPTZ NOT NULL,
+  timeto time NOT NULL,
+  user_id INTEGER NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "session_config" (
-  "IdSessionConfig" INTEGER NOT NULL,
-  "IdWorkstation" INTEGER NOT NULL,
-  "SessionName" varchar(256) NOT NULL,
-  "KeyName" varchar(256) NOT NULL,
-  "Value" varchar(256) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("IdSessionConfig")
+CREATE TABLE IF NOT EXISTS session_config (
+  idsessionconfig INTEGER NOT NULL,
+  idworkstation INTEGER NOT NULL,
+  sessionname varchar(256) NOT NULL,
+  keyname varchar(256) NOT NULL,
+  value varchar(256) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (idsessionconfig)
 );
 
-CREATE TABLE IF NOT EXISTS "tablesidelog" (
-  "Id" INTEGER NOT NULL,
-  "TimestampUtc" TIMESTAMPTZ NOT NULL,
-  "Level" INTEGER NOT NULL,
-  "TerminalName" varchar(64) NOT NULL,
-  "Message" varchar(4096) NOT NULL,
-  "Attachment" TEXT,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("Id")
+CREATE TABLE IF NOT EXISTS tablesidelog (
+  id INTEGER NOT NULL,
+  timestamputc TIMESTAMPTZ NOT NULL,
+  level INTEGER NOT NULL,
+  terminalname varchar(64) NOT NULL,
+  message varchar(4096) NOT NULL,
+  attachment TEXT,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "tip_distribution" (
-  "ID" INTEGER NOT NULL,
-  "date_close" TIMESTAMPTZ NOT NULL,
-  "users_id" INTEGER NOT NULL,
-  "users_role_id" INTEGER NOT NULL,
-  "users_role_name" varchar(100) NOT NULL,
-  "time_worked" NUMERIC(10,2) NOT NULL,
-  "tip" NUMERIC(10,2) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS tip_distribution (
+  id INTEGER NOT NULL,
+  date_close TIMESTAMPTZ NOT NULL,
+  users_id INTEGER NOT NULL,
+  users_role_id INTEGER NOT NULL,
+  users_role_name varchar(100) NOT NULL,
+  time_worked NUMERIC(10,2) NOT NULL,
+  tip NUMERIC(10,2) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "transaction_payment_response" (
-  "ID" INTEGER NOT NULL,
-  "Order_ID" INTEGER DEFAULT NULL,
-  "Transaction_ID" varchar(256) DEFAULT NULL,
-  "TransactionDate" TIMESTAMPTZ DEFAULT NULL,
-  "Batch_ID" varchar(256) DEFAULT NULL,
-  "Message" varchar(1024) DEFAULT NULL,
-  "HostToken" varchar(256) DEFAULT NULL,
-  "RequestRefCode" varchar(256) DEFAULT NULL,
-  "ApprovalCode" varchar(256) DEFAULT NULL,
-  "TransactionType" varchar(256) DEFAULT NULL,
-  "TerminalId" varchar(100) DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS transaction_payment_response (
+  id INTEGER NOT NULL,
+  order_id INTEGER DEFAULT NULL,
+  transaction_id varchar(256) DEFAULT NULL,
+  transactiondate TIMESTAMPTZ DEFAULT NULL,
+  batch_id varchar(256) DEFAULT NULL,
+  message varchar(1024) DEFAULT NULL,
+  hosttoken varchar(256) DEFAULT NULL,
+  requestrefcode varchar(256) DEFAULT NULL,
+  approvalcode varchar(256) DEFAULT NULL,
+  transactiontype varchar(256) DEFAULT NULL,
+  terminalid varchar(100) DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "user_role_tip_distribution" (
-  "ID" INTEGER NOT NULL,
-  "users_role_id" INTEGER NOT NULL,
-  "percent" NUMERIC(10,2) NOT NULL,
-  "enter_cash_tip" SMALLINT NOT NULL DEFAULT '0',
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS user_role_tip_distribution (
+  id INTEGER NOT NULL,
+  users_role_id INTEGER NOT NULL,
+  percent NUMERIC(10,2) NOT NULL,
+  enter_cash_tip SMALLINT NOT NULL DEFAULT '0',
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "users" (
-  "ID" INTEGER NOT NULL,
-  "Name" varchar(64) NOT NULL DEFAULT '',
-  "Password" varchar(10) NOT NULL DEFAULT '',
-  "Level" SMALLINT NOT NULL DEFAULT '0',
-  "flags" BIGINT NOT NULL DEFAULT '0',
-  "Last_Close" TIMESTAMPTZ NOT NULL,
-  "Unlocked" SMALLINT NOT NULL DEFAULT '0',
-  "Deleted" SMALLINT NOT NULL DEFAULT '0',
-  "Salary" NUMERIC(13,2) NOT NULL,
-  "CardNumber" varchar(256) NOT NULL,
-  "Phone" varchar(11) NOT NULL,
-  "Email" varchar(128) NOT NULL,
-  "Birthday" varchar(16) NOT NULL,
-  "Language" varchar(14) NOT NULL,
-  "FingerPrint1" BYTEA NOT NULL,
-  "FingerPrint2" BYTEA NOT NULL,
-  "AddedToCloudMEV" BOOLEAN NOT NULL DEFAULT FALSE,
-  "DateLastLogin" TIMESTAMPTZ DEFAULT NULL,
-  "users_role_id" INTEGER DEFAULT NULL,
-  "multirole" SMALLINT NOT NULL DEFAULT '0',
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID")
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER NOT NULL,
+  name varchar(64) NOT NULL DEFAULT '',
+  password varchar(10) NOT NULL DEFAULT '',
+  level SMALLINT NOT NULL DEFAULT '0',
+  flags BIGINT NOT NULL DEFAULT '0',
+  last_close TIMESTAMPTZ NOT NULL,
+  unlocked SMALLINT NOT NULL DEFAULT '0',
+  deleted SMALLINT NOT NULL DEFAULT '0',
+  salary NUMERIC(13,2) NOT NULL,
+  cardnumber varchar(256) NOT NULL,
+  phone varchar(11) NOT NULL,
+  email varchar(128) NOT NULL,
+  birthday varchar(16) NOT NULL,
+  language varchar(14) NOT NULL,
+  fingerprint1 BYTEA NOT NULL,
+  fingerprint2 BYTEA NOT NULL,
+  addedtocloudmev BOOLEAN NOT NULL DEFAULT FALSE,
+  datelastlogin TIMESTAMPTZ DEFAULT NULL,
+  users_role_id INTEGER DEFAULT NULL,
+  multirole SMALLINT NOT NULL DEFAULT '0',
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS "users_role" (
-  "ID" INTEGER NOT NULL,
-  "users_role_name" varchar(100) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("ID"),
-  UNIQUE ("users_role_name")
+CREATE TABLE IF NOT EXISTS users_role (
+  id INTEGER NOT NULL,
+  users_role_name varchar(100) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (users_role_name)
 );
 
-CREATE TABLE IF NOT EXISTS "versioninfo" (
-  "Version" BIGINT NOT NULL,
-  "AppliedOn" TIMESTAMPTZ DEFAULT NULL,
-  "Description" varchar(1024) DEFAULT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  UNIQUE ("Version")
+CREATE TABLE IF NOT EXISTS versioninfo (
+  version BIGINT NOT NULL,
+  appliedon TIMESTAMPTZ DEFAULT NULL,
+  description varchar(1024) DEFAULT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  UNIQUE (version)
 );
 
-CREATE TABLE IF NOT EXISTS "workstation" (
-  "IdWorkstation" INTEGER NOT NULL,
-  "IdWorkstationType" INTEGER NOT NULL,
-  "Serial" varchar(45) DEFAULT NULL,
-  "IP" varchar(20) DEFAULT NULL,
-  "Active" SMALLINT DEFAULT '1',
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("IdWorkstation"),
-  UNIQUE ("Serial")
+CREATE TABLE IF NOT EXISTS workstation (
+  idworkstation INTEGER NOT NULL,
+  idworkstationtype INTEGER NOT NULL,
+  serial varchar(45) DEFAULT NULL,
+  ip varchar(20) DEFAULT NULL,
+  active SMALLINT DEFAULT '1',
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (idworkstation),
+  UNIQUE (serial)
 );
 
-CREATE TABLE IF NOT EXISTS "workstation_type" (
-  "IdWorkstationType" INTEGER NOT NULL,
-  "Code" varchar(45) NOT NULL,
-  "deleted_at" TIMESTAMPTZ NULL DEFAULT NULL,
-  PRIMARY KEY ("IdWorkstationType"),
-  UNIQUE ("IdWorkstationType")
+CREATE TABLE IF NOT EXISTS workstation_type (
+  idworkstationtype INTEGER NOT NULL,
+  code varchar(45) NOT NULL,
+  deleted_at TIMESTAMPTZ DEFAULT NULL,
+  PRIMARY KEY (idworkstationtype),
+  UNIQUE (idworkstationtype)
 );
 
 
 -- Indexes
-CREATE INDEX IF NOT EXISTS "idx_account_Account_ID" ON "account" ("Account_ID");
-CREATE INDEX IF NOT EXISTS "idx_adyen_notification_IX_AdyenNotification_OrderId" ON "adyen_notification" ("OrderId");
-CREATE INDEX IF NOT EXISTS "idx_adyen_notification_IX_AdyenNotification_PspReference" ON "adyen_notification" ("PspReference");
-CREATE INDEX IF NOT EXISTS "idx_barbies_IX_Barbies_CardNumber" ON "barbies" ("CardNumber");
-CREATE INDEX IF NOT EXISTS "idx_blobs_idx_hash" ON "blobs" ("Hash");
-CREATE INDEX IF NOT EXISTS "idx_call_course_Table_ID" ON "call_course" ("Table_ID");
-CREATE INDEX IF NOT EXISTS "idx_cashdrawer_OpenDate" ON "cashdrawer" ("OpenDate","User_ID");
-CREATE INDEX IF NOT EXISTS "idx_datacandy_Order_ID" ON "datacandy" ("Order_ID");
-CREATE INDEX IF NOT EXISTS "idx_datacandy_DateTime" ON "datacandy" ("DateTime");
-CREATE INDEX IF NOT EXISTS "idx_delivery_address_Client_ID" ON "delivery_address" ("Deleted");
-CREATE INDEX IF NOT EXISTS "idx_delivery_address_Address" ON "delivery_address" ("Address","Deleted");
-CREATE INDEX IF NOT EXISTS "idx_delivery_client_Phone_Number" ON "delivery_client" ("Phone_Number","Deleted");
-CREATE INDEX IF NOT EXISTS "idx_delivery_client_Email" ON "delivery_client" ("Email","Deleted");
-CREATE INDEX IF NOT EXISTS "idx_delivery_order_Client_ID" ON "delivery_order" ("Client_ID");
-CREATE INDEX IF NOT EXISTS "idx_delivery_order_Address_ID" ON "delivery_order" ("Address_ID");
-CREATE INDEX IF NOT EXISTS "idx_gggolf_member_MemberID" ON "gggolf_member" ("MemberID");
-CREATE INDEX IF NOT EXISTS "idx_gggolf_member_IX_gggolf_member_name" ON "gggolf_member" ("Name");
-CREATE INDEX IF NOT EXISTS "idx_gift_card_CARD_NUMBER_MD5" ON "gift_card" ("CARD_NUMBER_MD5");
-CREATE INDEX IF NOT EXISTS "idx_gift_card_ACTIVE" ON "gift_card" ("ACTIVE");
-CREATE INDEX IF NOT EXISTS "idx_history_combine_Table_ID" ON "history_combine" ("Table_ID");
-CREATE INDEX IF NOT EXISTS "idx_history_separate_Table_ID" ON "history_separate" ("Table_ID");
-CREATE INDEX IF NOT EXISTS "idx_inventory_UID" ON "inventory" ("UID");
-CREATE INDEX IF NOT EXISTS "idx_inventory_QTY" ON "inventory" ("QTY");
-CREATE INDEX IF NOT EXISTS "idx_inventory_in_out_UID" ON "inventory_in_out" ("UID");
-CREATE INDEX IF NOT EXISTS "idx_inventory_in_out_Date" ON "inventory_in_out" ("Date");
-CREATE INDEX IF NOT EXISTS "idx_itemweight_IX_ItemWeight_ItemId" ON "itemweight" ("ItemId");
-CREATE INDEX IF NOT EXISTS "idx_liquor_device_time" ON "liquor" ("device_time","type");
-CREATE INDEX IF NOT EXISTS "idx_mev_transaction_IX_mev_transaction_orderID" ON "mev_transaction" ("OrderId");
-CREATE INDEX IF NOT EXISTS "idx_mev_transaction_IX_mev_transaction_DateCreated" ON "mev_transaction" ("DateCreated");
-CREATE INDEX IF NOT EXISTS "idx_mev_transaction_IX_mev_transaction_Status" ON "mev_transaction" ("Status");
-CREATE INDEX IF NOT EXISTS "idx_mev_transaction_IX_mev_transaction_UserId" ON "mev_transaction" ("UserId");
-CREATE INDEX IF NOT EXISTS "idx_mev_transaction_IX_mev_transaction_NoTrans" ON "mev_transaction" ("NoTrans");
-CREATE INDEX IF NOT EXISTS "idx_orders_Closed" ON "orders" ("Closed","Deleted","Completed");
-CREATE INDEX IF NOT EXISTS "idx_orders_DateClose" ON "orders" ("DateClose","Deleted","Completed");
-CREATE INDEX IF NOT EXISTS "idx_orders_Table_ID" ON "orders" ("Table_ID","Deleted","Completed");
-CREATE INDEX IF NOT EXISTS "idx_orders_Delivery_ID" ON "orders" ("Delivery_ID");
-CREATE INDEX IF NOT EXISTS "idx_orders_IX_orders_user_id" ON "orders" ("User_ID");
-CREATE INDEX IF NOT EXISTS "idx_orders_IX_orders_deleted" ON "orders" ("Deleted");
-CREATE INDEX IF NOT EXISTS "idx_orders_IX_orders_completed" ON "orders" ("Completed");
-CREATE INDEX IF NOT EXISTS "idx_orders_IX_orders_bill" ON "orders" ("Bill");
-CREATE INDEX IF NOT EXISTS "idx_orders_combine_IDTo" ON "orders_combine" ("IDTo");
-CREATE INDEX IF NOT EXISTS "idx_orders_discount_From_ID" ON "orders_discount" ("From_ID","From_Type");
-CREATE INDEX IF NOT EXISTS "idx_orders_ingredient_Account" ON "orders_ingredient" ("Account","Deleted");
-CREATE INDEX IF NOT EXISTS "idx_orders_ingredient_Item_ID" ON "orders_ingredient" ("Item_ID","Modifier","Deleted","Price");
-CREATE INDEX IF NOT EXISTS "idx_orders_item_Combo" ON "orders_item" ("Combo");
-CREATE INDEX IF NOT EXISTS "idx_orders_item_Order_ID" ON "orders_item" ("Order_ID","Type","Deleted","Price");
-CREATE INDEX IF NOT EXISTS "idx_orders_item_Account" ON "orders_item" ("Account","Deleted");
-CREATE INDEX IF NOT EXISTS "idx_orders_option_Item_ID" ON "orders_option" ("Item_ID","Price");
-CREATE INDEX IF NOT EXISTS "idx_orders_option_Account" ON "orders_option" ("Account");
-CREATE INDEX IF NOT EXISTS "idx_orders_payment_Order_ID" ON "orders_payment" ("Order_ID","Deleted");
-CREATE INDEX IF NOT EXISTS "idx_orders_ref_Order_ID" ON "orders_ref" ("Order_ID","Deleted");
-CREATE INDEX IF NOT EXISTS "idx_orders_transfer_ownership_Order_ID" ON "orders_transfer_ownership" ("Order_ID");
-CREATE INDEX IF NOT EXISTS "idx_orders_transfer_table_Order_ID" ON "orders_transfer_table" ("Order_ID");
-CREATE INDEX IF NOT EXISTS "idx_payout_User_ID" ON "payout" ("User_ID");
-CREATE INDEX IF NOT EXISTS "idx_payout_Date" ON "payout" ("Date");
-CREATE INDEX IF NOT EXISTS "idx_processor_pendingoperation_IX_processor_pendingoperation_orderid" ON "processor_pendingoperation" ("OrderId");
-CREATE INDEX IF NOT EXISTS "idx_processor_pendingoperation_IX_processor_pendingoperation_processorName" ON "processor_pendingoperation" ("ProcessorName");
-CREATE INDEX IF NOT EXISTS "idx_punch_clock_User_ID" ON "punch_clock" ("User_ID");
-CREATE INDEX IF NOT EXISTS "idx_punch_clock_PunchIn" ON "punch_clock" ("PunchIn");
-CREATE INDEX IF NOT EXISTS "idx_punch_clock_PunchOut" ON "punch_clock" ("PunchOut");
-CREATE INDEX IF NOT EXISTS "idx_reservation_Date" ON "reservation" ("Date","DateEnd");
-CREATE INDEX IF NOT EXISTS "idx_schedule_DateFrom" ON "schedule" ("DateFrom");
-CREATE INDEX IF NOT EXISTS "idx_schedule_User_ID" ON "schedule" ("User_ID");
-CREATE INDEX IF NOT EXISTS "idx_users_Password" ON "users" ("Password");
-CREATE INDEX IF NOT EXISTS "idx_users_Deleted" ON "users" ("Deleted");
+CREATE INDEX IF NOT EXISTS idx_account_account_id ON account (account_id);
+CREATE INDEX IF NOT EXISTS idx_account_deleted_at ON account (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_adyen_notification_ix_adyennotification_orderid ON adyen_notification (orderid);
+CREATE INDEX IF NOT EXISTS idx_adyen_notification_ix_adyennotification_pspreference ON adyen_notification (pspreference);
+CREATE INDEX IF NOT EXISTS idx_adyen_notification_deleted_at ON adyen_notification (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_barbies_ix_barbies_cardnumber ON barbies (cardnumber);
+CREATE INDEX IF NOT EXISTS idx_barbies_deleted_at ON barbies (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_blobs_idx_hash ON blobs (hash);
+CREATE INDEX IF NOT EXISTS idx_blobs_deleted_at ON blobs (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_call_course_table_id ON call_course (table_id);
+CREATE INDEX IF NOT EXISTS idx_call_course_deleted_at ON call_course (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_cashdrawer_opendate ON cashdrawer (opendate,user_id);
+CREATE INDEX IF NOT EXISTS idx_cashdrawer_deleted_at ON cashdrawer (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_config_deleted_at ON config (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_datacandy_order_id ON datacandy (order_id);
+CREATE INDEX IF NOT EXISTS idx_datacandy_datetime ON datacandy (datetime);
+CREATE INDEX IF NOT EXISTS idx_datacandy_deleted_at ON datacandy (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_delivery_address_client_id ON delivery_address (deleted);
+CREATE INDEX IF NOT EXISTS idx_delivery_address_address ON delivery_address (address,deleted);
+CREATE INDEX IF NOT EXISTS idx_delivery_address_deleted_at ON delivery_address (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_delivery_client_phone_number ON delivery_client (phone_number,deleted);
+CREATE INDEX IF NOT EXISTS idx_delivery_client_email ON delivery_client (email,deleted);
+CREATE INDEX IF NOT EXISTS idx_delivery_client_deleted_at ON delivery_client (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_delivery_order_client_id ON delivery_order (client_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_order_address_id ON delivery_order (address_id);
+CREATE INDEX IF NOT EXISTS idx_delivery_order_deleted_at ON delivery_order (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_employeurd_user_mapping_deleted_at ON employeurd_user_mapping (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_first_nation_certificate_deleted_at ON first_nation_certificate (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_geo_caching_deleted_at ON geo_caching (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_gggolf_member_memberid ON gggolf_member (memberid);
+CREATE INDEX IF NOT EXISTS idx_gggolf_member_ix_gggolf_member_name ON gggolf_member (name);
+CREATE INDEX IF NOT EXISTS idx_gggolf_member_deleted_at ON gggolf_member (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_gggolf_order_menu_deleted_at ON gggolf_order_menu (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_gggolf_station_menu_mapping_deleted_at ON gggolf_station_menu_mapping (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_gift_card_card_number_md5 ON gift_card (card_number_md5);
+CREATE INDEX IF NOT EXISTS idx_gift_card_active ON gift_card (active);
+CREATE INDEX IF NOT EXISTS idx_gift_card_deleted_at ON gift_card (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_gift_card_sales_deleted_at ON gift_card_sales (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_history_combine_table_id ON history_combine (table_id);
+CREATE INDEX IF NOT EXISTS idx_history_combine_deleted_at ON history_combine (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_history_separate_table_id ON history_separate (table_id);
+CREATE INDEX IF NOT EXISTS idx_history_separate_deleted_at ON history_separate (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_inventory_uid ON inventory (uid);
+CREATE INDEX IF NOT EXISTS idx_inventory_qty ON inventory (qty);
+CREATE INDEX IF NOT EXISTS idx_inventory_deleted_at ON inventory (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_inventory_in_out_uid ON inventory_in_out (uid);
+CREATE INDEX IF NOT EXISTS idx_inventory_in_out_date ON inventory_in_out (date);
+CREATE INDEX IF NOT EXISTS idx_inventory_in_out_deleted_at ON inventory_in_out (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_itemweight_ix_itemweight_itemid ON itemweight (itemid);
+CREATE INDEX IF NOT EXISTS idx_itemweight_deleted_at ON itemweight (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_liquor_device_time ON liquor (device_time,type);
+CREATE INDEX IF NOT EXISTS idx_liquor_deleted_at ON liquor (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_live_cart_info_deleted_at ON live_cart_info (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_menu_deleted_at ON menu (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_message_queue_deleted_at ON message_queue (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_message_queue_configuration_deleted_at ON message_queue_configuration (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_mev_transaction_ix_mev_transaction_orderid ON mev_transaction (orderid);
+CREATE INDEX IF NOT EXISTS idx_mev_transaction_ix_mev_transaction_datecreated ON mev_transaction (datecreated);
+CREATE INDEX IF NOT EXISTS idx_mev_transaction_ix_mev_transaction_status ON mev_transaction (status);
+CREATE INDEX IF NOT EXISTS idx_mev_transaction_ix_mev_transaction_userid ON mev_transaction (userid);
+CREATE INDEX IF NOT EXISTS idx_mev_transaction_ix_mev_transaction_notrans ON mev_transaction (notrans);
+CREATE INDEX IF NOT EXISTS idx_mev_transaction_deleted_at ON mev_transaction (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_mews_account_mapping_deleted_at ON mews_account_mapping (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_mews_tax_mapping_deleted_at ON mews_tax_mapping (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_orders_closed ON orders (closed,deleted,completed);
+CREATE INDEX IF NOT EXISTS idx_orders_dateclose ON orders (dateclose,deleted,completed);
+CREATE INDEX IF NOT EXISTS idx_orders_table_id ON orders (table_id,deleted,completed);
+CREATE INDEX IF NOT EXISTS idx_orders_delivery_id ON orders (delivery_id);
+CREATE INDEX IF NOT EXISTS idx_orders_ix_orders_user_id ON orders (user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_ix_orders_deleted ON orders (deleted);
+CREATE INDEX IF NOT EXISTS idx_orders_ix_orders_completed ON orders (completed);
+CREATE INDEX IF NOT EXISTS idx_orders_ix_orders_bill ON orders (bill);
+CREATE INDEX IF NOT EXISTS idx_orders_deleted_at ON orders (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_orders_combine_idto ON orders_combine (idto);
+CREATE INDEX IF NOT EXISTS idx_orders_combine_deleted_at ON orders_combine (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_orders_discount_from_id ON orders_discount (from_id,from_type);
+CREATE INDEX IF NOT EXISTS idx_orders_discount_deleted_at ON orders_discount (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_orders_ingredient_account ON orders_ingredient (account,deleted);
+CREATE INDEX IF NOT EXISTS idx_orders_ingredient_item_id ON orders_ingredient (item_id,modifier,deleted,price);
+CREATE INDEX IF NOT EXISTS idx_orders_ingredient_deleted_at ON orders_ingredient (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_orders_item_combo ON orders_item (combo);
+CREATE INDEX IF NOT EXISTS idx_orders_item_order_id ON orders_item (order_id,type,deleted,price);
+CREATE INDEX IF NOT EXISTS idx_orders_item_account ON orders_item (account,deleted);
+CREATE INDEX IF NOT EXISTS idx_orders_item_deleted_at ON orders_item (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_orders_option_item_id ON orders_option (item_id,price);
+CREATE INDEX IF NOT EXISTS idx_orders_option_account ON orders_option (account);
+CREATE INDEX IF NOT EXISTS idx_orders_option_deleted_at ON orders_option (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_order_id ON orders_payment (order_id,deleted);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_deleted_at ON orders_payment (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_orders_pre_payment_deleted_at ON orders_pre_payment (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_orders_ref_order_id ON orders_ref (order_id,deleted);
+CREATE INDEX IF NOT EXISTS idx_orders_ref_deleted_at ON orders_ref (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_orders_transfer_ownership_order_id ON orders_transfer_ownership (order_id);
+CREATE INDEX IF NOT EXISTS idx_orders_transfer_ownership_deleted_at ON orders_transfer_ownership (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_orders_transfer_table_order_id ON orders_transfer_table (order_id);
+CREATE INDEX IF NOT EXISTS idx_orders_transfer_table_deleted_at ON orders_transfer_table (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_payout_user_id ON payout (user_id);
+CREATE INDEX IF NOT EXISTS idx_payout_date ON payout (date);
+CREATE INDEX IF NOT EXISTS idx_payout_deleted_at ON payout (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_payout_supplier_deleted_at ON payout_supplier (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_pos_version_deleted_at ON pos_version (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_processor_pendingoperation_ix_processor_pendingoperation_orderid ON processor_pendingoperation (orderid);
+CREATE INDEX IF NOT EXISTS idx_processor_pendingoperation_ix_processor_pendingoperation_processorname ON processor_pendingoperation (processorname);
+CREATE INDEX IF NOT EXISTS idx_processor_pendingoperation_deleted_at ON processor_pendingoperation (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_punch_clock_user_id ON punch_clock (user_id);
+CREATE INDEX IF NOT EXISTS idx_punch_clock_punchin ON punch_clock (punchin);
+CREATE INDEX IF NOT EXISTS idx_punch_clock_punchout ON punch_clock (punchout);
+CREATE INDEX IF NOT EXISTS idx_punch_clock_deleted_at ON punch_clock (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_reservation_date ON reservation (date,dateend);
+CREATE INDEX IF NOT EXISTS idx_reservation_deleted_at ON reservation (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_reservation_waitinglist_deleted_at ON reservation_waitinglist (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_schedule_datefrom ON schedule (datefrom);
+CREATE INDEX IF NOT EXISTS idx_schedule_user_id ON schedule (user_id);
+CREATE INDEX IF NOT EXISTS idx_schedule_deleted_at ON schedule (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_session_config_deleted_at ON session_config (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_tablesidelog_deleted_at ON tablesidelog (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_tip_distribution_deleted_at ON tip_distribution (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_transaction_payment_response_deleted_at ON transaction_payment_response (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_user_role_tip_distribution_deleted_at ON user_role_tip_distribution (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_users_password ON users (password);
+CREATE INDEX IF NOT EXISTS idx_users_deleted ON users (deleted);
+CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON users (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_users_role_deleted_at ON users_role (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_versioninfo_deleted_at ON versioninfo (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_workstation_deleted_at ON workstation (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_workstation_type_deleted_at ON workstation_type (deleted_at);

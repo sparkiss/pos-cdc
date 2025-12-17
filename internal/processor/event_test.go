@@ -419,9 +419,9 @@ func TestPostgresBuilder_BuildInsert(t *testing.T) {
 		t.Fatalf("BuildInsert() error = %v", err)
 	}
 
-	// Check PostgreSQL-specific syntax
-	if !strings.HasPrefix(sql, `INSERT INTO "orders"`) {
-		t.Errorf("SQL should start with INSERT INTO \"orders\", got: %s", sql)
+	// Check PostgreSQL-specific syntax (lowercase, unquoted identifiers)
+	if !strings.HasPrefix(sql, "INSERT INTO orders") {
+		t.Errorf("SQL should start with INSERT INTO orders (lowercase, unquoted), got: %s", sql)
 	}
 	if !strings.Contains(sql, "ON CONFLICT") {
 		t.Error("SQL should contain ON CONFLICT")
@@ -432,8 +432,8 @@ func TestPostgresBuilder_BuildInsert(t *testing.T) {
 	if !strings.Contains(sql, "$1") {
 		t.Error("SQL should use $1 placeholders")
 	}
-	if !strings.Contains(sql, `"deleted_at"`) {
-		t.Error("SQL should include deleted_at column with double quotes")
+	if !strings.Contains(sql, "deleted_at") {
+		t.Error("SQL should include deleted_at column")
 	}
 
 	// Check args count (payload fields + deleted_at)
@@ -455,12 +455,12 @@ func TestPostgresBuilder_BuildDelete(t *testing.T) {
 		t.Fatalf("BuildDelete() error = %v", err)
 	}
 
-	// Check PostgreSQL-specific syntax
-	if !strings.HasPrefix(sql, `UPDATE "orders" SET "deleted_at" = $1`) {
-		t.Errorf("SQL should be UPDATE with $1 for soft delete, got: %s", sql)
+	// Check PostgreSQL-specific syntax (lowercase, unquoted identifiers)
+	if !strings.HasPrefix(sql, "UPDATE orders SET deleted_at = $1") {
+		t.Errorf("SQL should be UPDATE with $1 for soft delete (lowercase, unquoted), got: %s", sql)
 	}
-	if !strings.Contains(sql, `WHERE "id" = $2`) {
-		t.Errorf("SQL should contain WHERE \"id\" = $2, got: %s", sql)
+	if !strings.Contains(sql, "WHERE id = $2") {
+		t.Errorf("SQL should contain WHERE id = $2, got: %s", sql)
 	}
 
 	// Args: 1 (deleted_at timestamp) + 1 (WHERE id) = 2
