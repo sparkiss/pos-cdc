@@ -5,7 +5,7 @@ Converts MySQL DDL to PostgreSQL syntax with the following transformations:
 - Adds deleted_at column (TIMESTAMPTZ) to all tables
 - Removes excluded tables
 - Converts MySQL data types to PostgreSQL equivalents
-- Replaces backtick quoting with double quotes
+- Converts identifiers to lowercase (no quotes for case-insensitive queries)
 - Removes AUTO_INCREMENT (CDC provides IDs)
 - Removes MySQL-specific comments and syntax
 """
@@ -66,6 +66,19 @@ TYPE_MAP = [
     (r'\bENUM\s*\([^)]+\)', 'VARCHAR(255)'),
     (r'\bSET\s*\([^)]+\)', 'VARCHAR(255)'),
 ]
+
+
+def normalize_identifier(name):
+    """Convert identifier to lowercase without quotes for PostgreSQL compatibility.
+
+    PostgreSQL folds unquoted identifiers to lowercase, so using lowercase
+    identifiers without quotes allows case-insensitive queries like:
+    SELECT ID FROM ORDERS  ->  selects from 'id' column in 'orders' table
+    """
+    # Remove backticks and double quotes
+    name = name.replace('`', '').replace('"', '')
+    # Convert to lowercase
+    return name.lower()
 
 
 def remove_mysql_comments(content):
@@ -182,8 +195,15 @@ def parse_column_definitions(columns_str):
         if not line:
             continue
 
-        # Convert backticks to double quotes
-        line = line.replace('`', '"')
+        # Normalize identifiers: remove quotes and convert to lowercase
+        # This handles column names like `ID` -> id, `OrderDate` -> orderdate
+        def replace_quoted_identifier(m):
+            return normalize_identifier(m.group(0))
+
+        # Replace backtick-quoted identifiers
+        line = re.sub(r'`[^`]+`', replace_quoted_identifier, line)
+        # Replace double-quoted identifiers
+        line = re.sub(r'"[^"]+"', replace_quoted_identifier, line)
 
         # Check for PRIMARY KEY constraint
         if re.match(r'^\s*PRIMARY\s+KEY\s*\(', line, re.IGNORECASE):
@@ -229,23 +249,26 @@ def parse_column_definitions(columns_str):
 
 
 def generate_create_table(table_name, columns, constraints, add_deleted_at=True):
-    """Generate PostgreSQL CREATE TABLE statement."""
+    """Generate PostgreSQL CREATE TABLE statement with lowercase, unquoted identifiers."""
     all_items = columns.copy()
+
+    # Normalize table name to lowercase
+    table_name = normalize_identifier(table_name)
 
     # Check if deleted_at already exists
     has_deleted_at = any('deleted_at' in col.lower() for col in columns)
 
-    # Add deleted_at column if not already present
+    # Add deleted_at column if not already present (lowercase, no quotes)
     if add_deleted_at and not has_deleted_at:
-        all_items.append('"deleted_at" TIMESTAMPTZ DEFAULT NULL')
+        all_items.append('deleted_at TIMESTAMPTZ DEFAULT NULL')
 
     # Add constraints
     all_items.extend(constraints)
 
-    # Format the CREATE TABLE
+    # Format the CREATE TABLE (no quotes around table name)
     items_str = ',\n  '.join(all_items)
 
-    return f'CREATE TABLE IF NOT EXISTS "{table_name}" (\n  {items_str}\n)'
+    return f'CREATE TABLE IF NOT EXISTS {table_name} (\n  {items_str}\n)'
 
 
 def process_schema(input_file, output_file, excluded_tables, source_db, target_db):
@@ -300,7 +323,7 @@ def process_schema(input_file, output_file, excluded_tables, source_db, target_d
         # Add deleted_at index if not already present
         has_deleted_at_idx = any('deleted_at' in idx_name.lower() for idx_name, _ in indexes)
         if not has_deleted_at_idx:
-            all_indexes.append((table_name, 'deleted_at', '"deleted_at"'))
+            all_indexes.append((table_name, 'deleted_at', 'deleted_at'))
 
         print(f"Processed table: {table_name}")
 
@@ -316,11 +339,16 @@ def process_schema(input_file, output_file, excluded_tables, source_db, target_d
         for stmt in create_statements:
             f.write(stmt + ';\n\n')
 
-        # Write CREATE INDEX statements
+        # Write CREATE INDEX statements (lowercase, unquoted)
         if all_indexes:
             f.write('\n-- Indexes\n')
             for table_name, idx_name, idx_cols in all_indexes:
-                f.write(f'CREATE INDEX IF NOT EXISTS "idx_{table_name}_{idx_name}" ON "{table_name}" ({idx_cols});\n')
+                # Normalize all identifiers to lowercase
+                table_name_lower = normalize_identifier(table_name)
+                idx_name_lower = normalize_identifier(idx_name)
+                # Normalize column names in the index (remove quotes, lowercase)
+                idx_cols_lower = re.sub(r'[`"]', '', idx_cols).lower()
+                f.write(f'CREATE INDEX IF NOT EXISTS idx_{table_name_lower}_{idx_name_lower} ON {table_name_lower} ({idx_cols_lower});\n')
 
     print(f"\nSchema prepared successfully: {output_file}")
     print(f"Total tables: {len(create_statements)}")
