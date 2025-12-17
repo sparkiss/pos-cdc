@@ -39,11 +39,12 @@ func (c *Converter) ConvertValue(colInfo *ColumnInfo, value any) any {
 
 	switch colInfo.DataType {
 	// Temporal types - MySQL: datetime, timestamp; PostgreSQL: timestamp with/without time zone
-	case "datetime", "timestamp", "timestamp with time zone", "timestamp without time zone":
+	// Include PostgreSQL aliases: timestamptz, timetz
+	case "datetime", "timestamp", "timestamp with time zone", "timestamp without time zone", "timestamptz":
 		return c.convertToDateTime(value)
 	case "date":
 		return c.convertToDate(value)
-	case "time", "time with time zone", "time without time zone":
+	case "time", "time with time zone", "time without time zone", "timetz":
 		return c.convertToTime(value)
 
 	// Numeric types - pass through
