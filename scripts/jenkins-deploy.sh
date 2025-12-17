@@ -31,6 +31,16 @@ sleep 30
 
 # Verify deployment
 docker compose ps
-curl -f http://localhost:8081/health || exit 1
+
+# Health check with log capture on failure
+if ! curl -f http://localhost:8081/health; then
+    echo ""
+    echo "=== HEALTH CHECK FAILED ==="
+    echo "Container logs (last 100 lines):"
+    echo "================================"
+    docker logs cdc-consumer --tail 100 2>&1 || true
+    echo "================================"
+    exit 1
+fi
 
 echo "Deployment successful!"

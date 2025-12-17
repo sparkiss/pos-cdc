@@ -189,6 +189,16 @@ ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} \
                         }
                     }
                     if (!healthy) {
+                        // Capture container logs before failing
+                        sshagent(['cdc-server-ssh-key']) {
+                            sh """
+                                echo "=== Container Status ==="
+                                ssh \${DEPLOY_USER}@\${DEPLOY_HOST} 'cd /opt/pos-cdc/deployments/docker && docker compose ps'
+                                echo ""
+                                echo "=== Container Logs (last 100 lines) ==="
+                                ssh \${DEPLOY_USER}@\${DEPLOY_HOST} 'docker logs cdc-consumer --tail 100 2>&1' || true
+                            """
+                        }
                         error "Health check failed after 10 attempts"
                     }
                 }
