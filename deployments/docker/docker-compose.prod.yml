@@ -12,12 +12,23 @@ services:
       - "9090:9090"  # Metrics
       - "8081:8081"  # Health
     environment:
-      # Target Database (EXTERNAL - not in Docker)
+      # Target Database Type
+      TARGET_TYPE: ${TARGET_TYPE:-postgres}
+
+      # Target Database - MySQL (used when TARGET_TYPE=mysql)
       TARGET_DB_HOST: ${TARGET_DB_HOST}
       TARGET_DB_PORT: ${TARGET_DB_PORT}
       TARGET_DB_USER: ${TARGET_DB_USER}
       TARGET_DB_PASSWORD: ${TARGET_DB_PASSWORD}
       TARGET_DB_NAME: ${TARGET_DB_NAME}
+
+      # Target Database - PostgreSQL (used when TARGET_TYPE=postgres)
+      TARGET_PG_HOST: ${TARGET_PG_HOST}
+      TARGET_PG_PORT: ${TARGET_PG_PORT}
+      TARGET_PG_USER: ${TARGET_PG_USER}
+      TARGET_PG_PASSWORD: ${TARGET_PG_PASSWORD}
+      TARGET_PG_DATABASE: ${TARGET_PG_DATABASE}
+      TARGET_PG_SSLMODE: ${TARGET_PG_SSLMODE:-disable}
 
       # Kafka
       KAFKA_BROKERS: redpanda:29092
@@ -32,6 +43,10 @@ services:
       MAX_RETRIES: 3
       RETRY_BACKOFF_MS: 1000
       EXCLUDED_TABLES: ${EXCLUDED_TABLES:-recorded_order,lock,log}
+
+      # Timezone
+      SOURCE_DB_TIMEZONE: ${SOURCE_DB_TIMEZONE:-America/Toronto}
+      TARGET_DB_TIMEZONE: ${TARGET_DB_TIMEZONE:-America/Toronto}
 
       # Monitoring
       METRICS_PORT: 9090
