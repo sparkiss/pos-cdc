@@ -27,7 +27,7 @@ pipeline {
 
 
         // TargetTYpe
-        TARGET_TYPE=postgres
+        TARGET_TYPE='postgres'
 
         // Source Database
         SOURCE_DB_HOST = '192.168.0.74'
