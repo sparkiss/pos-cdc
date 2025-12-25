@@ -86,6 +86,8 @@ services:
       - redpanda
     volumes:
       - debezium-data:/kafka/data
+      - debezium-logs:/kafka/logs
+      - debezium-config:/kafka/config
     logging:
       driver: "json-file"
       options:
@@ -116,6 +118,8 @@ services:
 volumes:
   redpanda-data:
   debezium-data:
+  debezium-logs:
+  debezium-config:
 
 networks:
   cdc-network:
