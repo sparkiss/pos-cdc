@@ -30,6 +30,25 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}=== CDC Pipeline Reset ===${NC}"
 
+# Source .env file for environment-specific configuration
+if [ -f .env ]; then
+  set -a
+  source .env
+  set +a
+fi
+
+# Validate DEBEZIUM_SERVER_ID is set (prevents server.id conflicts between environments)
+if [ -z "${DEBEZIUM_SERVER_ID}" ]; then
+  echo -e "${RED}Error: DEBEZIUM_SERVER_ID is not set in .env${NC}"
+  echo "Each environment needs a unique server ID to avoid MySQL replication conflicts."
+  echo "Example values:"
+  echo "  Dev:     DEBEZIUM_SERVER_ID=118331"
+  echo "  Staging: DEBEZIUM_SERVER_ID=118332"
+  echo "  Prod:    DEBEZIUM_SERVER_ID=118333"
+  exit 1
+fi
+echo -e "${YELLOW}Using DEBEZIUM_SERVER_ID=${DEBEZIUM_SERVER_ID}${NC}"
+
 # Check if Debezium is reachable
 if ! curl -s "${DEBEZIUM_URL}/" > /dev/null 2>&1; then
   echo -e "${RED}Error: Cannot reach Debezium at ${DEBEZIUM_URL}${NC}"
@@ -111,11 +130,15 @@ if [ ! -f "${CONNECTOR_CONFIG}" ]; then
   exit 1
 fi
 
+# Inject DEBEZIUM_SERVER_ID from .env into connector config
+# This ensures each environment (dev/staging/prod) has a unique server.id
+FINAL_CONFIG=$(jq ".config[\"database.server.id\"] = ${DEBEZIUM_SERVER_ID}" "${CONNECTOR_CONFIG}")
+
 # Retry connector creation (worker may not be ready)
 for attempt in {1..10}; do
   RESPONSE=$(curl -sS -X POST "${DEBEZIUM_URL}/connectors" \
     -H "Content-Type: application/json" \
-    -d @"${CONNECTOR_CONFIG}" 2>/dev/null)
+    -d "${FINAL_CONFIG}" 2>/dev/null)
 
   if echo "$RESPONSE" | jq -e '.name' > /dev/null 2>&1; then
     echo -e "${GREEN}Connector created: $(echo "$RESPONSE" | jq -r '.name')${NC}"
