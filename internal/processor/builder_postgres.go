@@ -8,6 +8,24 @@ import (
 	"github.com/sparkiss/pos-cdc/internal/schema"
 )
 
+// getPayloadValue retrieves a value from payload with case-insensitive key matching.
+// PostgreSQL schema has lowercase column names, but CDC payload may have original MySQL case.
+func getPayloadValue(payload map[string]any, key string) (any, bool) {
+	// Try exact match first
+	if value, ok := payload[key]; ok {
+		return value, true
+	}
+
+	// Case-insensitive fallback
+	lowerKey := strings.ToLower(key)
+	for k, v := range payload {
+		if strings.ToLower(k) == lowerKey {
+			return v, true
+		}
+	}
+	return nil, false
+}
+
 // PostgresBuilder generates PostgreSQL-specific SQL statements.
 // Uses lowercase, unquoted identifiers for case-insensitive queries.
 type PostgresBuilder struct{}
@@ -44,7 +62,12 @@ func (b *PostgresBuilder) BuildInsert(table string, payload map[string]any, tabl
 		paramIdx++
 
 		// Skip primary keys in ON CONFLICT DO UPDATE
-		if colInfo, ok := tableSchema.Columns[colName]; ok && !colInfo.IsPrimary {
+		// Case-insensitive column lookup: try exact match, then lowercase
+		colInfo, ok := tableSchema.Columns[colName]
+		if !ok {
+			colInfo, ok = tableSchema.Columns[strings.ToLower(colName)]
+		}
+		if ok && !colInfo.IsPrimary {
 			updateClauses = append(updateClauses, fmt.Sprintf("%s = EXCLUDED.%s", col, col))
 		}
 	}
@@ -89,7 +112,12 @@ func (b *PostgresBuilder) BuildUpdate(table string, payload map[string]any, tabl
 			continue
 		}
 
+		// Case-insensitive column lookup: try exact match, then lowercase
 		colInfo, exists := tableSchema.Columns[colName]
+		if !exists {
+			colInfo, exists = tableSchema.Columns[strings.ToLower(colName)]
+		}
+
 		if exists && colInfo.IsPrimary {
 			pkValues = append(pkValues, value)
 			continue
@@ -139,7 +167,8 @@ func (b *PostgresBuilder) BuildDelete(table string, payload map[string]any, tabl
 
 	var pkValues []any
 	for _, pk := range tableSchema.PrimaryKeys {
-		if value, ok := payload[pk]; ok {
+		// Use case-insensitive lookup: PostgreSQL has lowercase keys, CDC payload has original case
+		if value, ok := getPayloadValue(payload, pk); ok {
 			pkValues = append(pkValues, value)
 		}
 	}
